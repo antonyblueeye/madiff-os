@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Madiff Email Newsletter Builder</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brandDark: '#001524',
+                        brandTeal: '#15616d',
+                        brandCream: '#ffecd1',
+                        brandRust: '#78290f',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar for Sidebar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Mobile Preview Container Constraints */
+        .preview-mobile {
+            max-width: 375px !important;
+            margin: 0 auto;
+            border: 12px solid #1e293b;
+            border-radius: 36px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 h-screen flex flex-col font-sans overflow-hidden">
+
+    <!-- TOP HEADER -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div
+                class="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#78290f] to-[#15616d] flex items-center justify-center font-bold text-white shadow-lg">
+                M
+            </div>
+            <h1 class="font-bold text-lg text-white tracking-wide">Madiff <span
+                    class="text-xs px-2 py-0.5 rounded bg-teal-900 text-teal-300 border border-teal-700">Newsletter
+                    Builder</span></h1>
+        </div>
+
+        <!-- PREVIEW TOGGLES & ACTIONS -->
+        <div class="flex items-center space-x-4">
+            <div class="bg-slate-800 p-1 rounded-lg flex items-center border border-slate-700">
+                <button id="btn-view-desktop" onclick="setPreviewDevice('desktop')"
+                    class="px-3 py-1.5 rounded-md text-xs font-medium flex items-center space-x-2 transition bg-slate-700 text-white shadow-sm">
+                    <i class="fa-solid font-sm fa-desktop"></i>
+                    <span>Desktop</span>
+                </button>
+                <button id="btn-view-mobile" onclick="setPreviewDevice('mobile')"
+                    class="px-3 py-1.5 rounded-md text-xs font-medium flex items-center space-x-2 transition text-slate-400 hover:text-white">
+                    <i class="fa-solid font-sm fa-mobile-screen-button"></i>
+                    <span>Mobile</span>
+                </button>
+            </div>
+
+            <div class="h-6 w-px bg-slate-800"></div>
+
+            <button onclick="resetData()"
+                class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold flex items-center space-x-2 transition text-rose-400">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span>Reset</span>
+            </button>
+
+            <button onclick="copyHTML()"
+                class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center space-x-2 transition">
+                <i class="fa-regular fa-copy text-amber-400"></i>
+                <span>Copy HTML</span>
+            </button>
+
+            <button onclick="downloadHTML()"
+                class="px-4 py-2 rounded-lg bg-[#78290f] hover:bg-amber-900 text-white text-xs font-semibold flex items-center space-x-2 shadow-lg transition">
+                <i class="fa-solid fa-download"></i>
+                <span>Download HTML</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT SPLIT -->
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- LEFT SIDEBAR: CONTROLS -->
+        <aside class="w-[450px] bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 z-10">
+
+            <!-- ADD BLOCK BUTTONS -->
+            <div class="p-4 border-b border-slate-800 bg-slate-900/50">
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Add new
+                    block:</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="addNewBlock('vacancy')"
+                        class="p-2 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-200 flex items-center space-x-2 transition text-left">
+                        <i class="fa-solid fa-briefcase text-teal-400"></i>
+                        <span>+ Vacancy</span>
+                    </button>
+                    <button onclick="addNewBlock('article')"
+                        class="p-2 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-200 flex items-center space-x-2 transition text-left">
+                        <i class="fa-solid fa-newspaper text-amber-400"></i>
+                        <span>+ Article</span>
+                    </button>
+                    <button onclick="addNewBlock('testimonial')"
+                        class="p-2 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-200 flex items-center space-x-2 transition text-left">
+                        <i class="fa-solid fa-quote-left text-purple-400"></i>
+                        <span>+ Testimonial</span>
+                    </button>
+                    <button onclick="addNewBlock('customText')"
+                        class="p-2 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-200 flex items-center space-x-2 transition text-left">
+                        <i class="fa-solid fa-paragraph text-blue-400"></i>
+                        <span>+ Text / Button</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- BLOCKS EDITOR ACCORDION LIST -->
+            <div id="editor-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+                <!-- JS will render block editors dynamically -->
+            </div>
+        </aside>
+
+        <!-- RIGHT AREA: LIVE PREVIEW -->
+        <main class="flex-1 bg-slate-950 p-6 overflow-y-auto flex justify-center items-start">
+            <div id="preview-wrapper" class="w-full max-w-[650px] transition-all duration-300 h-fit">
+                <iframe id="preview-frame" scrolling="no"
+                    class="w-full border-0 rounded-lg shadow-2xl bg-[#001524] overflow-hidden"></iframe>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="toast"
+        class="fixed bottom-6 right-6 bg-teal-600 text-white px-5 py-3 rounded-lg shadow-2xl text-sm font-semibold flex items-center space-x-2 translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-message">Copied successfully!</span>
+    </div>
+
+    <script>
+        window.addEventListener('message', (e) => {
+            if (e.data && e.data.type === 'resize') {
+                const iframe = document.getElementById('preview-frame');
+                if (iframe && e.data.height) {
+                    iframe.style.height = e.data.height + 'px';
+                }
+            }
+        });
+
+        // INITIAL STATE WITH DEFAULT CONTENT
+        let emailData = {
+            globalBgColor: '#001524',
+            banner: {
+                visible: true,
+                bgColor: '#001524',
+                imgUrl: "https://stratus.campaign-image.com/images/17872164404271_banner-august_zc_v12_1_1075359000006965003.png",
+                linkUrl: "https://madiff.pl"
+            },
+            hero: {
+                visible: true,
+                tag: "August Edition",
+                title: "MADIFF NEWSLETTER",
+                bgColor: '#15616d',
+                subtitle: "Navigating the frontier of AI, technology orchestration, and modern engineering.",
+                bgImgUrl: "https://stratus.campaign-image.com/images/1787216441828_1_zc_v12_1075359000006736003.jpeg"
+            },
+            vacanciesTitle: "WE ARE HIRING",
+            vacanciesBgColor: '#15616d',
+            vacancies: [
+                {
+                    id: 'v1',
+                    title: "IT Recruiter",
+                    desc: "Help top specialists find their perfect job and manage end-to-end recruitment across remote Agile teams in Telecom, Banking, and Hi-Tech.",
+                    btnText: "Apply Now →",
+                    btnUrl: "https://madiffpl.zohorecruit.com/jobs/Careers/300725000045476004/IT-Recruiter?source=CareerSite"
+                },
+                {
+                    id: 'v2',
+                    title: "Business Manager",
+                    desc: "Drive commercial growth, open enterprise accounts, and sell IT consulting, contracting, and cutting-edge AI Factory solutions.",
+                    btnText: "Apply Now →",
+                    btnUrl: "https://madiffpl.zohorecruit.com/jobs/Careers/300725000049181063/Business-Manager?source=CareerSite"
+                }
+            ],
+            event: {
+                visible: true,
+                tag: "EVENT & INSIGHTS",
+                title: "An Exclusive Computer Vision Workshop",
+                bgColor: '#001524',
+                images: [
+                    { imgUrl: "https://stratus.campaign-image.com/images/17873030152532_image-4_zc_v15_2_1075359000006965003.jpg", linkUrl: "https://ibb.co/RTX5PNgJ" },
+                    { imgUrl: "https://stratus.campaign-image.com/images/17873030169733_image-(1)_zc_v15_3_1075359000006965003.jpg", linkUrl: "https://postimg.cc/1gZmmLjG" },
+                    { imgUrl: "https://stratus.campaign-image.com/images/17873030179934_image-(2)_zc_v15_4_1075359000006965003.jpg", linkUrl: "https://postimg.cc/fSkZqZVn" }
+                ],
+                paragraphs: [
+                    "We recently hosted an exclusive Computer Vision workshop designed for a focused group of technology professionals interested in exploring the practical side of visual AI.",
+                    "Rather than a broad presentation, the workshop created a more focused environment for deeper discussion, knowledge sharing, and direct interaction with a Computer Vision specialist.",
+                    "With a limited group of participants, the session offered an opportunity to go beyond the hype around AI and take a closer look at how Computer Vision can be approached from a practical, engineering perspective."
+                ],
+                highlight: "Focused expertise. Meaningful discussions. Practical AI."
+            },
+            testimonialsBgColor: '#15616d',
+            testimonials: [
+                {
+                    id: 't1',
+                    tag: "TESTIMONIAL",
+                    quote: "I combine product strategy with daily delivery in AI-driven projects. What I value most is the moment when a complex regulatory problem turns into a simple, working feature in the hands of the user.",
+                    authorImg: "https://stratus.campaign-image.com/images/17872164408643_testimonial-aug_zc_v12_3_1075359000006965003.png",
+                    authorName: "Vitali Khakholka",
+                    authorRole: "Product Manager | AI Enthusiast | MBA: International Business"
+                }
+            ],
+            articlesTitle: "ARTICLES & READS",
+            articlesBgColor: '#15616d',
+            articles: [
+                {
+                    id: 'a1',
+                    type: 'card',
+                    tag: "Nature Reports",
+                    title: "AI Surpasses Average Human Creativity",
+                    desc: "Yoshua Bengio’s study benchmarked AI against 100k+ humans, crossing average creativity thresholds.",
+                    imgUrl: "https://stratus.campaign-image.com/images/17872164412074_article-1_zc_v12_4_1075359000006965003.jpg",
+                    btnText: "Read →",
+                    linkUrl: "https://www.nature.com/articles/s41598-025-25157-3"
+                },
+                {
+                    id: 'a2',
+                    type: 'card',
+                    tag: "ISACA Intelligence",
+                    title: "Autonomous Cyber-Espionage Agents",
+                    desc: "State actors weaponize autonomous coding models into live command orchestrators.",
+                    imgUrl: "https://stratus.campaign-image.com/images/17872164414675_article-2_zc_v12_5_1075359000006965003.jpg",
+                    btnText: "Read →",
+                    linkUrl: "https://www.isaca.org/resources/news-and-trends/isaca-now-blog/2025/avoiding-ai-pitfalls-in-2026-lessons-learned-from-top-2025-incidents"
+                },
+                {
+                    id: 'a3',
+                    type: 'full',
+                    tag: "Light Corner / AI Fail",
+                    title: "Police AI Claims Officer \"Turned Into a Frog\"",
+                    desc: "Automated report software ingested Disney audio from the background—creating an official record claiming an officer transformed into a frog.",
+                    imgUrl: "https://stratus.campaign-image.com/images/17872164417606_article-3_zc_v12_6_1075359000006965003.jpg",
+                    bgUrl: "https://stratus.campaign-image.com/images/1787304975978_1_zc_v16_1075359000006736003.jpeg",
+                    btnText: "Read Story →",
+                    linkUrl: "https://www.hrgrapevine.com/us/content/article/2026-01-09-police-grappling-with-ai-reporting-after-officer-was-reported-as-frog"
+                }
+            ],
+            partner: {
+                visible: true,
+                tag: "PARTNERS PROGRAM",
+                bgColor: '#15616d',
+                title: "Connect with partner communities and earn 10% commission on referrals.",
+                desc: "A great fit includes IT professionals with a strong network who are looking to increase their income, tech entrepreneurs or companies aiming to expand their business and grow their connections, as well as businesses in complementary industries interested in engaging with the tech community. Sharing contact details allows us to explore and build a partnership model that works well for both sides.",
+                btnText: "Become a Partner →",
+                btnUrl: "https://madiff.eu/partners/"
+            },
+            customBlocks: [],
+            footer: {
+                bgColor: '#001524',
+                copyright: "© 2026 Madiff. All rights reserved.",
+                subText: "You received this email because you are subscribed to Madiff Newsletter."
+            }
+        };
+
+        const savedData = localStorage.getItem('madiffNewsletterData');
+        if (savedData) {
+            try {
+                const parsed = JSON.parse(savedData);
+                if (parsed.event && !Array.isArray(parsed.event.images)) {
+                    const imgs = [];
+                    if (parsed.event.mainImg) imgs.push({ imgUrl: parsed.event.mainImg, linkUrl: parsed.event.mainImgLink || '#' });
+                    if (parsed.event.sideImg1) imgs.push({ imgUrl: parsed.event.sideImg1, linkUrl: parsed.event.sideImg1Link || '#' });
+                    if (parsed.event.sideImg2) imgs.push({ imgUrl: parsed.event.sideImg2, linkUrl: parsed.event.sideImg2Link || '#' });
+                    parsed.event.images = imgs;
+
+                    const paras = [];
+                    if (parsed.event.p1) paras.push(parsed.event.p1);
+                    if (parsed.event.p2) paras.push(parsed.event.p2);
+                    if (parsed.event.p3) paras.push(parsed.event.p3);
+                    parsed.event.paragraphs = paras;
+                }
+                emailData = parsed;
+            } catch (e) {
+                console.error("Failed to parse saved data", e);
+            }
+        }
+
+        // RENDER CONTROLS IN SIDEBAR
+        function renderEditor() {
+            const container = document.getElementById('editor-container');
+            container.innerHTML = '';
+
+            // 0. GLOBAL SETTINGS
+            container.appendChild(createSectionCard('Global Settings', 'fa-globe', `
+        <div class="space-y-2">
+          <label class="block text-xs text-slate-400">Newsletter Background Color</label>
+          <div class="flex items-center space-x-2">
+            <input type="color" value="${emailData.globalBgColor}" oninput="emailData.globalBgColor = this.value; updatePreview();" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent">
+          </div>
+        </div>
+      `));
+
+            // 1. BANNER
+            container.appendChild(createSectionCard('Banner', 'fa-image', `
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs text-slate-400">Show banner</span>
+          <input type="checkbox" ${emailData.banner.visible ? 'checked' : ''} onchange="emailData.banner.visible = this.checked; updatePreview();" class="accent-amber-600 w-4 h-4 rounded">
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs text-slate-400">Block Background Color</label>
+          <input type="color" value="${emailData.banner.bgColor}" oninput="emailData.banner.bgColor = this.value; updatePreview();" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent mb-2">
+          <label class="block text-xs text-slate-400">Image URL</label>
+          <input type="text" value="${emailData.banner.imgUrl}" oninput="emailData.banner.imgUrl = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200">
+          <label class="block text-xs text-slate-400">Link URL</label>
+          <input type="text" value="${emailData.banner.linkUrl}" oninput="emailData.banner.linkUrl = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200">
+        </div>
+      `));
+
+            // 2. HERO HEADER
+            container.appendChild(createSectionCard('Hero Header', 'fa-heading', `
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs text-slate-400">Show header</span>
+          <input type="checkbox" ${emailData.hero.visible ? 'checked' : ''} onchange="emailData.hero.visible = this.checked; updatePreview();" class="accent-amber-600 w-4 h-4 rounded">
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs text-slate-400">Block Background Color</label>
+          <input type="color" value="${emailData.hero.bgColor}" oninput="emailData.hero.bgColor = this.value; updatePreview();" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent mb-2">
+          <label class="block text-xs text-slate-400">Tag (Badge)</label>
+          <input type="text" value="${emailData.hero.tag}" oninput="emailData.hero.tag = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200">
+          <label class="block text-xs text-slate-400">Main Title</label>
+          <input type="text" value="${emailData.hero.title}" oninput="emailData.hero.title = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200">
+          <label class="block text-xs text-slate-400">Subtitle</label>
+          <textarea oninput="emailData.hero.subtitle = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200 rows-2">${emailData.hero.subtitle}</textarea>
+          <label class="block text-xs text-slate-400">Background Image URL</label>
+          <input type="text" value="${emailData.hero.bgImgUrl}" oninput="emailData.hero.bgImgUrl = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200">
+        </div>
+      `));
+
+            // 3. VACANCIES
+            let vacanciesHTML = `
+        <div class="mb-3">
+          <label class="block text-xs text-slate-400 mb-1">Block Background Color</label>
+          <input type="color" value="${emailData.vacanciesBgColor}" oninput="emailData.vacanciesBgColor = this.value; updatePreview();" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent mb-2">
+          <label class="block text-xs text-slate-400 mb-1">Section Title</label>
+          <input type="text" value="${emailData.vacanciesTitle}" oninput="emailData.vacanciesTitle = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200 mb-3">
+        </div>
+        <div class="space-y-3">
+      `;
+            emailData.vacancies.forEach((v, idx) => {
+                vacanciesHTML += `
+          <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded space-y-2 relative group">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-semibold text-teal-400">Vacancy #${idx + 1}</span>
+              <button onclick="removeVacancy(${idx})" class="text-rose-400 hover:text-rose-300 text-xs px-1"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            <input type="text" value="${v.title}" placeholder="Job Title" oninput="emailData.vacancies[${idx}].title = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+            <textarea placeholder="Description" oninput="emailData.vacancies[${idx}].desc = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 h-14">${v.desc}</textarea>
+            <div class="grid grid-cols-2 gap-2">
+              <input type="text" value="${v.btnText}" placeholder="Button Text" oninput="emailData.vacancies[${idx}].btnText = this.value; updatePreview();" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+              <input type="text" value="${v.btnUrl}" placeholder="Link" oninput="emailData.vacancies[${idx}].btnUrl = this.value; updatePreview();" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+            </div>
+          </div>
+        `;
+            });
+            vacanciesHTML += `
+        </div>
+        <button onclick="addNewBlock('vacancy')" class="mt-3 w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-teal-400 border border-slate-700 rounded text-xs font-semibold transition">+ Add Vacancy</button>
+      `;
+            container.appendChild(createSectionCard('Vacancies', 'fa-briefcase', vacanciesHTML));
+
+            // 4. EVENT & INSIGHTS (DYNAMIC IMAGES & PARAGRAPHS)
+            let eventImagesHTML = '';
+            emailData.event.images.forEach((img, idx) => {
+                eventImagesHTML += `
+          <div class="p-2 bg-slate-950/60 border border-slate-800 rounded space-y-1 relative">
+            <div class="flex justify-between items-center">
+              <span class="text-[10px] text-amber-400 font-semibold">Image #${idx + 1}</span>
+              <button onclick="removeEventImage(${idx})" class="text-rose-400 hover:text-rose-300 text-xs px-1"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            <input type="text" value="${img.imgUrl}" placeholder="Image URL" oninput="emailData.event.images[${idx}].imgUrl = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+            <input type="text" value="${img.linkUrl}" placeholder="Link URL" oninput="emailData.event.images[${idx}].linkUrl = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+          </div>
+        `;
+            });
+
+            let eventParasHTML = '';
+            emailData.event.paragraphs.forEach((pText, idx) => {
+                eventParasHTML += `
+          <div class="p-2 bg-slate-950/60 border border-slate-800 rounded space-y-1 relative">
+            <div class="flex justify-between items-center">
+              <span class="text-[10px] text-teal-400 font-semibold">Paragraph #${idx + 1}</span>
+              <button onclick="removeEventParagraph(${idx})" class="text-rose-400 hover:text-rose-300 text-xs px-1"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            <textarea oninput="emailData.event.paragraphs[${idx}] = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 h-12">${pText}</textarea>
+          </div>
+        `;
+            });
+
+            container.appendChild(createSectionCard('Event & Insights', 'fa-calendar-star', `
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs text-slate-400">Show block</span>
+          <input type="checkbox" ${emailData.event.visible ? 'checked' : ''} onchange="emailData.event.visible = this.checked; updatePreview();" class="accent-amber-600 w-4 h-4 rounded">
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Block Background Color</label>
+            <input type="color" value="${emailData.event.bgColor}" oninput="emailData.event.bgColor = this.value; updatePreview();" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Badge Tag</label>
+            <input type="text" value="${emailData.event.tag}" oninput="emailData.event.tag = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Block Title</label>
+            <input type="text" value="${emailData.event.title}" oninput="emailData.event.title = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200">
+          </div>
+
+          <!-- IMAGES SECTION -->
+          <div class="border-t border-slate-700/60 pt-2">
+            <div class="flex justify-between items-center mb-2">
+              <label class="block text-xs font-semibold text-slate-300">Gallery Images (${emailData.event.images.length})</label>
+              <button onclick="addEventImage()" class="text-xs text-amber-400 hover:text-amber-300 font-medium">+ Add Image</button>
+            </div>
+            <div class="space-y-2">
+              ${eventImagesHTML}
+            </div>
+          </div>
+
+          <!-- PARAGRAPHS SECTION -->
+          <div class="border-t border-slate-700/60 pt-2">
+            <div class="flex justify-between items-center mb-2">
+              <label class="block text-xs font-semibold text-slate-300">Paragraphs (${emailData.event.paragraphs.length})</label>
+              <button onclick="addEventParagraph()" class="text-xs text-teal-400 hover:text-teal-300 font-medium">+ Add Paragraph</button>
+            </div>
+            <div class="space-y-2">
+              ${eventParasHTML}
+            </div>
+          </div>
+
+          <div class="border-t border-slate-700/60 pt-2">
+            <label class="block text-xs text-slate-400 mb-1">Closing Phrase (Bottom Highlight)</label>
+            <input type="text" value="${emailData.event.highlight}" oninput="emailData.event.highlight = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200">
+          </div>
+        </div>
+      `));
+
+            // 5. TESTIMONIALS
+            let testimonialHTML = `<div class="mb-3"><label class="block text-xs text-slate-400 mb-1">Block Background Color</label><input type="color" value="${emailData.testimonialsBgColor}" oninput="emailData.testimonialsBgColor = this.value; updatePreview();" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent"></div><div class="space-y-3">`;
+            emailData.testimonials.forEach((t, idx) => {
+                testimonialHTML += `
+          <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-semibold text-purple-400">Testimonial #${idx + 1}</span>
+              <button onclick="removeTestimonial(${idx})" class="text-rose-400 hover:text-rose-300 text-xs px-1"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            <textarea placeholder="Quote" oninput="emailData.testimonials[${idx}].quote = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 h-14">${t.quote}</textarea>
+            <input type="text" value="${t.authorName}" placeholder="Author Name" oninput="emailData.testimonials[${idx}].authorName = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+            <input type="text" value="${t.authorRole}" placeholder="Role" oninput="emailData.testimonials[${idx}].authorRole = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+            <input type="text" value="${t.authorImg}" placeholder="Author Photo URL" oninput="emailData.testimonials[${idx}].authorImg = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+          </div>
+        `;
+            });
+            testimonialHTML += `
+        </div>
+        <button onclick="addNewBlock('testimonial')" class="mt-3 w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-purple-400 border border-slate-700 rounded text-xs font-semibold transition">+ Add Testimonial</button>
+      `;
+            container.appendChild(createSectionCard('Testimonial', 'fa-quote-left', testimonialHTML));
+
+            // 6. ARTICLES
+            let articlesHTML = `
+        <div class="mb-3">
+          <label class="block text-xs text-slate-400 mb-1">Block Background Color</label>
+          <input type="color" value="${emailData.articlesBgColor}" oninput="emailData.articlesBgColor = this.value; updatePreview();" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent mb-2">
+          <label class="block text-xs text-slate-400 mb-1">Section Title</label>
+          <input type="text" value="${emailData.articlesTitle}" oninput="emailData.articlesTitle = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200 mb-3">
+        </div>
+        <div class="space-y-3">
+      `;
+            emailData.articles.forEach((a, idx) => {
+                articlesHTML += `
+          <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-semibold text-amber-400">Article #${idx + 1} (${a.type === 'card' ? 'Card' : 'Full width'})</span>
+              <button onclick="removeArticle(${idx})" class="text-rose-400 hover:text-rose-300 text-xs px-1"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            <input type="text" value="${a.tag}" placeholder="Tag" oninput="emailData.articles[${idx}].tag = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+            <input type="text" value="${a.title}" placeholder="Title" oninput="emailData.articles[${idx}].title = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+            <textarea placeholder="Short Description" oninput="emailData.articles[${idx}].desc = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 h-12">${a.desc}</textarea>
+            <input type="text" value="${a.imgUrl}" placeholder="Image URL" oninput="emailData.articles[${idx}].imgUrl = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+            <div class="grid grid-cols-2 gap-2">
+              <input type="text" value="${a.btnText}" placeholder="Button Text" oninput="emailData.articles[${idx}].btnText = this.value; updatePreview();" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+              <input type="text" value="${a.linkUrl}" placeholder="Link" oninput="emailData.articles[${idx}].linkUrl = this.value; updatePreview();" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+            </div>
+          </div>
+        `;
+            });
+            articlesHTML += `
+        </div>
+        <button onclick="addNewBlock('article')" class="mt-3 w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 rounded text-xs font-semibold transition">+ Add Article</button>
+      `;
+            container.appendChild(createSectionCard('Articles & Reads', 'fa-newspaper', articlesHTML));
+
+            // 7. PARTNERS PROGRAM (FIXED COLOR BINDING)
+            container.appendChild(createSectionCard('Partners Program', 'fa-handshake', `
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs text-slate-400">Show block</span>
+          <input type="checkbox" ${emailData.partner.visible ? 'checked' : ''} onchange="emailData.partner.visible = this.checked; updatePreview();" class="accent-amber-600 w-4 h-4 rounded">
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs text-slate-400">Block Background Color</label>
+          <input type="color" value="${emailData.partner.bgColor || '#15616d'}" oninput="emailData.partner.bgColor = this.value; updatePreview();" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent mb-2">
+          <label class="block text-xs text-slate-400">Title</label>
+          <input type="text" value="${emailData.partner.title}" oninput="emailData.partner.title = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200">
+          <label class="block text-xs text-slate-400">Text</label>
+          <textarea oninput="emailData.partner.desc = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200 h-20">${emailData.partner.desc}</textarea>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs text-slate-400">Button</label>
+              <input type="text" value="${emailData.partner.btnText}" oninput="emailData.partner.btnText = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400">Link</label>
+              <input type="text" value="${emailData.partner.btnUrl}" oninput="emailData.partner.btnUrl = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200">
+            </div>
+          </div>
+        </div>
+      `));
+
+            // 8. CUSTOM BLOCKS (IF ANY)
+            if (emailData.customBlocks.length > 0) {
+                let customHTML = '<div class="space-y-3">';
+                emailData.customBlocks.forEach((cb, idx) => {
+                    customHTML += `
+            <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-xs font-semibold text-blue-400">Custom Block #${idx + 1}</span>
+                <button onclick="removeCustomBlock(${idx})" class="text-rose-400 hover:text-rose-300 text-xs px-1"><i class="fa-solid fa-trash"></i></button>
+              </div>
+              <label class="block text-xs text-slate-400">Block Background Color</label>
+              <input type="color" value="${cb.bgColor || '#15616d'}" oninput="emailData.customBlocks[${idx}].bgColor = this.value; updatePreview();" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent mb-2">
+              <input type="text" value="${cb.title}" placeholder="Title" oninput="emailData.customBlocks[${idx}].title = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+              <textarea placeholder="Content" oninput="emailData.customBlocks[${idx}].text = this.value; updatePreview();" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 h-14">${cb.text}</textarea>
+              <div class="grid grid-cols-2 gap-2">
+                <input type="text" value="${cb.btnText}" placeholder="Button (optional)" oninput="emailData.customBlocks[${idx}].btnText = this.value; updatePreview();" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+                <input type="text" value="${cb.btnUrl}" placeholder="Link" oninput="emailData.customBlocks[${idx}].btnUrl = this.value; updatePreview();" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200">
+              </div>
+            </div>
+          `;
+                });
+                customHTML += '</div>';
+                container.appendChild(createSectionCard('Custom Blocks', 'fa-paragraph', customHTML));
+            }
+
+            // 9. FOOTER
+            container.appendChild(createSectionCard('Footer', 'fa-shoe-prints', `
+        <div class="space-y-2">
+          <label class="block text-xs text-slate-400">Block Background Color</label>
+          <input type="color" value="${emailData.footer.bgColor}" oninput="emailData.footer.bgColor = this.value; updatePreview();" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent mb-2">
+          <label class="block text-xs text-slate-400">Copyright</label>
+          <input type="text" value="${emailData.footer.copyright}" oninput="emailData.footer.copyright = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200">
+          <label class="block text-xs text-slate-400">Service text</label>
+          <input type="text" value="${emailData.footer.subText}" oninput="emailData.footer.subText = this.value; updatePreview();" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200">
+        </div>
+      `));
+        }
+
+        // HELPER FOR CARD WRAPPER IN SIDEBAR
+        function createSectionCard(title, iconClass, innerHTML) {
+            const wrapper = document.createElement('div');
+            wrapper.className = "bg-slate-800/80 border border-slate-700/70 rounded-lg overflow-hidden";
+            wrapper.innerHTML = `
+        <details class="group" open>
+          <summary class="flex items-center justify-between p-3 cursor-pointer bg-slate-800 hover:bg-slate-700/80 transition select-none">
+            <div class="flex items-center space-x-2 text-xs font-semibold text-slate-200">
+              <i class="fa-solid ${iconClass} text-slate-400 group-open:text-amber-400 w-4"></i>
+              <span>${title}</span>
+            </div>
+            <i class="fa-solid fa-chevron-down text-xs text-slate-500 group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <div class="p-3 border-t border-slate-700/50 bg-slate-900/40">
+            ${innerHTML}
+          </div>
+        </details>
+      `;
+            return wrapper;
+        }
+
+        // ADD / REMOVE EVENT IMAGES & PARAGRAPHS
+        function addEventImage() {
+            if (!emailData.event.images) emailData.event.images = [];
+            emailData.event.images.push({ imgUrl: '', linkUrl: '' });
+            renderEditor();
+            updatePreview();
+        }
+
+        function removeEventImage(idx) {
+            emailData.event.images.splice(idx, 1);
+            renderEditor();
+            updatePreview();
+        }
+
+        function addEventParagraph() {
+            if (!emailData.event.paragraphs) emailData.event.paragraphs = [];
+            emailData.event.paragraphs.push('');
+            renderEditor();
+            updatePreview();
+        }
+
+        function removeEventParagraph(idx) {
+            emailData.event.paragraphs.splice(idx, 1);
+            renderEditor();
+            updatePreview();
+        }
+
+        // ADD / REMOVE ITEMS
+        function addNewBlock(type) {
+            if (type === 'vacancy') {
+                emailData.vacancies.push({
+                    id: 'v_' + Date.now(),
+                    title: "New Role",
+                    desc: "Description for the open position.",
+                    btnText: "Apply Now →",
+                    btnUrl: "https://madiff.pl"
+                });
+            } else if (type === 'article') {
+                emailData.articles.push({
+                    id: 'a_' + Date.now(),
+                    type: 'card',
+                    tag: "Tech News",
+                    title: "New Article Title",
+                    desc: "Short summary of the article content goes here.",
+                    imgUrl: "https://stratus.campaign-image.com/images/17872164412074_article-1_zc_v12_4_1075359000006965003.jpg",
+                    btnText: "Read →",
+                    linkUrl: "https://madiff.pl"
+                });
+            } else if (type === 'testimonial') {
+                emailData.testimonials.push({
+                    id: 't_' + Date.now(),
+                    tag: "TESTIMONIAL",
+                    quote: "This is a great quote about working with the team and achieving awesome results.",
+                    authorImg: "https://stratus.campaign-image.com/images/17872164408643_testimonial-aug_zc_v12_3_1075359000006965003.png",
+                    authorName: "John Doe",
+                    authorRole: "Tech Lead | Engineer"
+                });
+            } else if (type === 'customText') {
+                emailData.customBlocks.push({
+                    id: 'c_' + Date.now(),
+                    bgColor: '#15616d',
+                    title: "Custom Block Header",
+                    text: "Additional description or text block added to the newsletter.",
+                    btnText: "Learn More",
+                    btnUrl: "https://madiff.pl"
+                });
+            }
+            renderEditor();
+            updatePreview();
+        }
+
+        function removeVacancy(index) {
+            emailData.vacancies.splice(index, 1);
+            renderEditor();
+            updatePreview();
+        }
+
+        function removeArticle(index) {
+            emailData.articles.splice(index, 1);
+            renderEditor();
+            updatePreview();
+        }
+
+        function removeTestimonial(index) {
+            emailData.testimonials.splice(index, 1);
+            renderEditor();
+            updatePreview();
+        }
+
+        function removeCustomBlock(index) {
+            emailData.customBlocks.splice(index, 1);
+            renderEditor();
+            updatePreview();
+        }
+
+        // BUILD FULL HTML STRING BASED ON CURRENT DATA
+        function generateFullHTML() {
+            // 1. BANNER
+            const bannerHTML = emailData.banner.visible ? `
+        <!-- 1. BANNER -->
+        <tr>
+          <td style="padding: 0; padding-bottom: 20px; background-color: ${emailData.banner.bgColor || emailData.globalBgColor};" align="center">
+            <a target="_blank" style="color: #ffecd1; text-decoration: none;" rel="noopener noreferrer" href="${emailData.banner.linkUrl}">
+              <img width="100%" style="display: block; border-radius: 8px; border: 1px solid #15616d;" src="${emailData.banner.imgUrl}" alt="Madiff Banner">
+            </a>
+          </td>
+        </tr>
+      ` : '';
+
+            // 2. HERO
+            const heroHTML = emailData.hero.visible ? `
+        <!-- 2. HERO HEADER -->
+        <tr>
+          <td style="padding: 0; padding-bottom: 25px;">
+            <table width="100%" style="color: #ffecd1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; border-spacing: 0; background-color: ${emailData.hero.bgColor || '#15616d'}; background-size: cover; background-position: center; border-radius: 8px; overflow: hidden; border: 1px solid #15616d;" cellspacing="0" cellpadding="0" border="0" background="${emailData.hero.bgImgUrl}">
+              <tbody>
+                <tr>
+                  <td style="padding: 0; background-color: rgba(0, 21, 36, 0.78); padding: 40px 30px;" class="mobile-padding">
+                    <span style="color: #ffecd1; font-size: 11px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; background-color: #78290f; padding: 4px 8px; border-radius: 3px;">${emailData.hero.tag}</span>
+                    <h1 style="color: #ffecd1; font-size: 28px; font-weight: 800; margin: 15px 0 10px 0; line-height: 1.2; letter-spacing: 0.5px;">${emailData.hero.title}</h1>
+                    <p style="color: #ffecd1; font-size: 14px; margin: 0; opacity: 0.9; line-height: 1.5;">${emailData.hero.subtitle}</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+      ` : '';
+
+            // 3. VACANCIES
+            let vacanciesItemsHTML = '';
+            emailData.vacancies.forEach(v => {
+                vacanciesItemsHTML += `
+          <table width="100%" style="color: #ffecd1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; border-spacing: 0; margin-bottom: 12px; background-color: ${emailData.vacanciesBgColor || '#15616d'}; border-radius: 6px;" cellspacing="0" cellpadding="0" border="0">
+            <tbody>
+              <tr>
+                <td style="padding: 16px 20px;" class="mobile-padding">
+                  <table width="100%" style="color: #ffecd1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; border-spacing: 0;" cellspacing="0" cellpadding="0" border="0">
+                    <tbody>
+                      <tr>
+                        <td style="padding: 0; color: #ffecd1; font-size: 15px; font-weight: bold;">${v.title}</td>
+                        <td style="padding: 0;" align="right">
+                          <a target="_blank" style="color: #ffecd1; text-decoration: none; background-color: #78290f; padding: 7px 14px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block;" rel="noopener noreferrer" href="${v.btnUrl}">${v.btnText}</a>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p style="color: #ffecd1; font-size: 12px; opacity: 0.85; margin: 8px 0 0 0; line-height: 1.4;">${v.desc}</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+            });
+
+            const vacanciesHTML = emailData.vacancies.length > 0 ? `
+        <!-- 3. VACANCIES -->
+        <tr>
+          <td style="padding: 0; padding-bottom: 25px;">
+            <h3 style="color: #ffecd1; font-size: 14px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; border-left: 4px solid #78290f; padding-left: 10px; margin: 0 0 15px 0;">${emailData.vacanciesTitle}</h3>
+            ${vacanciesItemsHTML}
+          </td>
+        </tr>
+      ` : '';
+
+            // 4. DYNAMIC EVENT & INSIGHTS GENERATION
+            let eventGalleryHTML = '';
+            const imgs = emailData.event.images || [];
+
+            if (imgs.length === 1) {
+                // 1 Image -> Full width
+                eventGalleryHTML = `
+          <table width="100%" style="margin: 15px 0; border-spacing: 0;" cellspacing="0" cellpadding="0" border="0">
+            <tbody>
+              <tr>
+                <td style="padding: 0;">
+                  <a target="_blank" style="text-decoration: none; color: #ffecd1;" rel="noopener noreferrer" href="${imgs[0].linkUrl || '#'}">
+                    <img width="100%" style="border: 0; display: block; border-radius: 6px; max-height: 320px; object-fit: cover;" src="${imgs[0].imgUrl}" alt="Event Image">
+                  </a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+            } else if (imgs.length >= 2) {
+                // Multi-image layout (1 main left, rest on right)
+                const mainImg = imgs[0];
+                const sideImgs = imgs.slice(1);
+
+                let sideImgsHTML = '';
+                sideImgs.forEach((sImg, sIdx) => {
+                    const paddingBottom = (sIdx === sideImgs.length - 1) ? '0' : '7px';
+                    const sideHeight = sideImgs.length === 1 ? '215px' : '104px';
+                    sideImgsHTML += `
+            <tr>
+              <td style="padding: 0; padding-bottom: ${paddingBottom};">
+                <a target="_blank" style="text-decoration: none; color: #ffecd1;" rel="noopener noreferrer" href="${sImg.linkUrl || '#'}">
+                  <img width="100%" style="border: 0; display: block; border-radius: 6px; height: ${sideHeight}; object-fit: cover;" src="${sImg.imgUrl}" alt="Event Side Image">
+                </a>
+              </td>
+            </tr>
+          `;
+                });
+
+                eventGalleryHTML = `
+          <table width="100%" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:100%; margin: 15px 0; border-spacing: 0;" cellspacing="0" cellpadding="0" border="0">
+            <tbody>
+              <tr>
+                <!-- Main Large Photo Left -->
+                <td width="58%" valign="top" style="padding: 0; padding-right: 8px;" class="event-col-main">
+                  <a target="_blank" style="text-decoration: none; color: #ffecd1;" rel="noopener noreferrer" href="${mainImg.linkUrl || '#'}">
+                    <img width="100%" style="border: 0; display: block; border-radius: 6px; height: 215px; object-fit: cover; object-position: 20% 80%;" src="${mainImg.imgUrl}" alt="Event Main">
+                  </a>
+                </td>
+                <!-- Side Photos Right -->
+                <td width="42%" valign="top" style="padding: 0;" class="event-col-side">
+                  <table width="100%" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:100%; color: #ffecd1; border-spacing: 0;" cellspacing="0" cellpadding="0" border="0">
+                    <tbody>
+                      ${sideImgsHTML}
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+            }
+
+            let eventParagraphsHTML = '';
+            (emailData.event.paragraphs || []).forEach(pText => {
+                if (pText.trim()) {
+                    eventParagraphsHTML += `<p style="color: #ffecd1; font-size: 14px; line-height: 1.6; opacity: 0.85; margin: 0 0 10px 0;">${pText}</p>`;
+                }
+            });
+
+            const eventHTML = emailData.event.visible ? `
+        <!-- 4. EVENT & INSIGHTS -->
+        <tr>
+          <td style="padding: 0; padding-bottom: 25px;">
+            <table width="100%" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:100%; color: #ffecd1; border-spacing: 0; background-color: ${emailData.event.bgColor || emailData.globalBgColor}; border: 1px solid #15616d; border-radius: 8px;" cellspacing="0" cellpadding="0" border="0">
+              <tbody>
+                <tr>
+                  <td style="padding: 25px;" class="mobile-padding">
+                    <span style="color: #15616d; font-size: 11px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; background-color: #ffecd1; padding: 3px 8px; border-radius: 3px;">${emailData.event.tag}</span>
+                    <h2 style="color: #ffecd1; font-size: 18px; font-weight: 700; margin: 15px 0 12px 0;">${emailData.event.title}</h2>
+                    
+                    ${eventGalleryHTML}
+
+                    <div style="margin-top: 15px;">
+                      ${eventParagraphsHTML}
+                    </div>
+
+                    ${emailData.event.highlight ? `<p style="color: #ffecd1; font-size: 14px; font-weight: bold; margin: 15px 0 0 0; padding-top: 10px; border-top: 1px solid #15616d;">${emailData.event.highlight}</p>` : ''}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+      ` : '';
+
+            // 5. TESTIMONIALS
+            let testimonialsHTML = '';
+            emailData.testimonials.forEach(t => {
+                testimonialsHTML += `
+          <!-- TESTIMONIAL -->
+          <tr>
+            <td style="padding: 0; padding-bottom: 25px;">
+              <table width="100%" style="color: #ffecd1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; border-spacing: 0; background-color: ${emailData.testimonialsBgColor || '#15616d'}; border-radius: 8px;" cellspacing="0" cellpadding="0" border="0">
+                <tbody>
+                  <tr>
+                    <td style="padding: 25px;" class="mobile-padding">
+                      <span style="color: #ffecd1; font-size: 11px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.7;">${t.tag}</span>
+                      <div style="border-left: 3px solid #78290f; padding-left: 15px; margin: 15px 0 20px 0;">
+                        <p style="color: #ffecd1; font-size: 14px; font-style: italic; line-height: 1.6; margin: 0;">"${t.quote}"</p>
+                      </div>
+                      <table style="color: #ffecd1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; border-spacing: 0;" cellspacing="0" cellpadding="0" border="0">
+                        <tbody>
+                          <tr>
+                            <td width="48" style="padding: 0; vertical-align: middle;">
+                              <img width="48" height="48" style="display: block; border-radius: 50%; border: 2px solid #ffecd1;" src="${t.authorImg}" alt="${t.authorName}">
+                            </td>
+                            <td style="padding: 0; padding-left: 12px; vertical-align: middle;">
+                              <div style="color: #ffecd1; font-size: 14px; font-weight: bold;">${t.authorName}</div>
+                              <div style="color: #ffecd1; font-size: 11px; opacity: 0.85; margin-top: 2px;">${t.authorRole}</div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        `;
+            });
+
+            // 6. ARTICLES
+            let articlesItemsHTML = '';
+            const cards = emailData.articles.filter(a => a.type === 'card');
+            const fulls = emailData.articles.filter(a => a.type === 'full');
+
+            if (cards.length > 0) {
+                articlesItemsHTML += `<table width="100%" style="color: #ffecd1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; border-spacing: 0; margin-bottom: 20px;" cellspacing="0" cellpadding="0" border="0"><tbody><tr>`;
+                cards.forEach((c, idx) => {
+                    if (idx > 0 && idx % 2 === 0) {
+                        articlesItemsHTML += `</tr></tbody></table><table width="100%" style="color: #ffecd1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; border-spacing: 0; margin-bottom: 20px;" cellspacing="0" cellpadding="0" border="0"><tbody><tr>`;
+                    } else if (idx % 2 === 1) {
+                        articlesItemsHTML += `<td width="20" style="padding: 0; font-size: 0; line-height: 0;" class="col-2"></td>`;
+                    }
+                    articlesItemsHTML += `
+            <td width="290" valign="top" style="padding: 0; background-color: ${emailData.articlesBgColor || '#15616d'}; border-radius: 8px; overflow: hidden;" class="col-2">
+              <table width="100%" style="color: #ffecd1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; border-spacing: 0; height: 300px;" class="article-card" cellspacing="0" cellpadding="0" border="0">
+                <tbody>
+                  <tr>
+                    <td valign="top" style="padding: 0;" height="130">
+                      <img width="100%" height="130" style="display: block; object-fit: cover;" src="${c.imgUrl}" alt="Article">
+                    </td>
+                  </tr>
+                  <tr>
+                    <td valign="top" style="padding: 16px 16px 0 16px;">
+                      <span style="font-size: 10px; color: #ffecd1; opacity: 0.7; text-transform: uppercase; font-weight: bold;">${c.tag}</span>
+                      <h4 style="color: #ffecd1; font-size: 13px; margin: 4px 0 8px 0; font-weight: 700; line-height: 1.3;">${c.title}</h4>
+                      <p style="color: #ffecd1; font-size: 11px; line-height: 1.45; opacity: 0.85; margin: 0;">${c.desc}</p>
+                    </td>
+                  </tr>
+                  <tr><td style="padding: 0;" height="100%"></td></tr>
+                  <tr>
+                    <td valign="bottom" style="padding: 0 16px 16px 16px;">
+                      <a target="_blank" style="color: #ffecd1; text-decoration: none; display: inline-block; background-color: #78290f; padding: 6px 12px; border-radius: 4px; font-size: 10px; font-weight: bold;" rel="noopener noreferrer" href="${c.linkUrl}">${c.btnText}</a>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          `;
+                });
+                articlesItemsHTML += `</tr></tbody></table>`;
+            }
+
+            fulls.forEach(f => {
+                articlesItemsHTML += `
+          <table width="100%" style="color: #ffecd1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; border-spacing: 0; background-color: ${emailData.articlesBgColor || '#15616d'}; border-radius: 8px; overflow: hidden; margin-bottom: 20px;" cellspacing="0" cellpadding="0" border="0">
+            <tbody>
+              <tr>
+                <td width="200" valign="top" style="padding: 0; background-image: url('${f.bgUrl || f.imgUrl}'); background-size: cover; background-position: center; background-repeat: no-repeat;" class="col-2 article-3-img" background="${f.bgUrl || f.imgUrl}">
+                  <img width="200" height="100%" style="display: block; width: 100%; height: 100%; min-height: 150px; opacity: 0; object-fit: cover;" src="${f.imgUrl}" alt="Article">
+                </td>
+                <td valign="top" style="padding: 16px;" class="col-2">
+                  <span style="font-size: 10px; color: #ffecd1; opacity: 0.7; text-transform: uppercase; font-weight: bold;">${f.tag}</span>
+                  <h4 style="color: #ffecd1; font-size: 14px; margin: 4px 0 6px 0; font-weight: 700;">${f.title}</h4>
+                  <p style="color: #ffecd1; font-size: 11px; line-height: 1.45; opacity: 0.85; margin: 0 0 14px 0;">${f.desc}</p>
+                  <a target="_blank" style="color: #ffecd1; text-decoration: none; display: inline-block; background-color: #78290f; padding: 6px 12px; border-radius: 4px; font-size: 10px; font-weight: bold;" rel="noopener noreferrer" href="${f.linkUrl}">${f.btnText}</a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+            });
+
+            const articlesHTML = emailData.articles.length > 0 ? `
+        <!-- 6. ARTICLES -->
+        <tr>
+          <td style="padding: 0; padding-bottom: 25px;">
+            <h3 style="color: #ffecd1; font-size: 14px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; border-left: 4px solid #78290f; padding-left: 10px; margin: 0 0 15px 0;">${emailData.articlesTitle}</h3>
+            ${articlesItemsHTML}
+          </td>
+        </tr>
+      ` : '';
+
+            // 7. PARTNERS (FIXED BG COLOR BINDING)
+            const partnerHTML = emailData.partner.visible ? `
+        <!-- 7. PARTNERS PROGRAM -->
+        <tr>
+          <td style="padding: 0; padding-bottom: 25px;">
+            <table width="100%" style="color: #ffecd1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; border-spacing: 0; background-color: ${emailData.partner.bgColor || '#15616d'}; border-radius: 8px;" cellspacing="0" cellpadding="0" border="0">
+              <tbody>
+                <tr>
+                  <td style="padding: 25px;" class="mobile-padding">
+                    <h3 style="color: #ffecd1; font-size: 14px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; border-left: 4px solid #78290f; padding-left: 10px; margin: 0 0 15px 0;">${emailData.partner.tag}</h3>
+                    <p style="color: #ffecd1; font-size: 15px; font-weight: bold; margin: 0 0 12px 0; line-height: 1.4;">${emailData.partner.title}</p>
+                    <p style="color: #ffecd1; font-size: 13px; line-height: 1.6; opacity: 0.85; margin: 0 0 20px 0;">${emailData.partner.desc}</p>
+                    <a target="_blank" style="color: #ffecd1; text-decoration: none; background-color: #78290f; padding: 8px 16px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block;" rel="noopener noreferrer" href="${emailData.partner.btnUrl}">${emailData.partner.btnText}</a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+      ` : '';
+
+            // 8. CUSTOM BLOCKS
+            let customBlocksHTML = '';
+            emailData.customBlocks.forEach(cb => {
+                customBlocksHTML += `
+          <!-- CUSTOM BLOCK -->
+          <tr>
+            <td style="padding: 0; padding-bottom: 25px;">
+              <table width="100%" style="color: #ffecd1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; border-spacing: 0; background-color: ${cb.bgColor || '#15616d'}; border-radius: 8px;" cellspacing="0" cellpadding="0" border="0">
+                <tbody>
+                  <tr>
+                    <td style="padding: 25px;" class="mobile-padding">
+                      <h3 style="color: #ffecd1; font-size: 16px; font-weight: bold; margin: 0 0 10px 0;">${cb.title}</h3>
+                      <p style="color: #ffecd1; font-size: 13px; line-height: 1.6; opacity: 0.85; margin: 0 0 15px 0;">${cb.text}</p>
+                      ${cb.btnText ? `<a target="_blank" style="color: #ffecd1; text-decoration: none; background-color: #78290f; padding: 7px 14px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block;" href="${cb.btnUrl}">${cb.btnText}</a>` : ''}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        `;
+            });
+
+            // FULL TEMPLATE ASSEMBLY
+            return `<!DOCTYPE html>
+<html>
+<head>
+  <title>Madiff Newsletter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+  <style type="text/css">
+    html, body { margin: 0; padding: 0; height: auto; min-height: 0; background-color: ${emailData.globalBgColor}; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+    table { border-spacing: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #ffecd1; }
+    td { padding: 0; }
+    img { border: 0; display: block; }
+    a { color: #ffecd1; text-decoration: none; }
+    .ze_body { font-family: Verdana, arial, Helvetica, sans-serif; font-size: 13px; }
+    @media screen and (max-width: 600px) {
+      .wrapper { width: 100% !important; }
+      .mobile-padding { padding-left: 20px !important; padding-right: 20px !important; }
+      .col-2 { width: 100% !important; display: block !important; margin-bottom: 20px !important; }
+      .article-card { height: auto !important; }
+      .article-3-img { height: 180px !important; width: 100% !important; }
+      .event-col-main { width: 100% !important; display: block !important; padding-right: 0 !important; padding-bottom: 12px !important; }
+      .event-col-side { width: 100% !important; display: block !important; padding-left: 0 !important; }
+    }
+  </style>
+</head>
+<body style="background-color: ${emailData.globalBgColor}; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 0; font-size: 13px;" class="ze_body">
+  <center style="width: 100%; table-layout: fixed; background-color: ${emailData.globalBgColor}; padding-top: 20px; padding-bottom: 0;">
+    <div style="max-width: 600px; margin: 0 auto; height: auto;">
+      <table width="600" style="color: #ffecd1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; border-spacing: 0; border-collapse: collapse; background-color: ${emailData.globalBgColor}; margin: 0 auto;" class="wrapper" cellspacing="0" cellpadding="0" border="0" align="center">
+        <tbody>
+          ${bannerHTML}
+          ${heroHTML}
+          ${vacanciesHTML}
+          ${eventHTML}
+          ${testimonialsHTML}
+          ${articlesHTML}
+          ${partnerHTML}
+          ${customBlocksHTML}
+          
+          <!-- FOOTER -->
+          <tr>
+            <td style="padding: 20px 0 10px 0; border-top: 1px solid #15616d; background-color: ${emailData.footer.bgColor || emailData.globalBgColor};" align="center">
+              <p style="color: #ffecd1; font-size: 12px; margin: 0 0 10px 0; opacity: 0.6;">${emailData.footer.copyright}</p>
+              <p style="color: #ffecd1; font-size: 11px; margin: 0; opacity: 0.4;">
+                ${emailData.footer.subText}<br>
+                <a style="color: #ffecd1; text-decoration: underline;" href="$[LI:UNSUBSCRIBE]$">Unsubscribe</a> | <a style="color: #ffecd1; text-decoration: underline;" href="$[LI:VIEWINBROWSER]$">View in Browser</a>
+              </p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </center>
+  <script>
+    function sendHeight() {
+      const wrapper = document.querySelector('center');
+      const height = wrapper ? wrapper.offsetHeight : document.body.offsetHeight;
+      window.parent.postMessage({ type: 'resize', height: height }, '*');
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      sendHeight();
+    });
+    resizeObserver.observe(document.body);
+    window.addEventListener('load', sendHeight);
+    window.addEventListener('resize', sendHeight);
+  <\/script>
+</body>
+</html>`;
+        }
+
+        // UPDATE PREVIEW IFRAME AND RESIZE
+        function updatePreview() {
+            localStorage.setItem('madiffNewsletterData', JSON.stringify(emailData));
+            const iframe = document.getElementById('preview-frame');
+            iframe.style.height = '0px'; // Force reset iframe height before calculating new height
+            const html = generateFullHTML();
+            iframe.srcdoc = html;
+        }
+
+        function resetData() {
+            if (confirm("Are you sure you want to reset all changes?")) {
+                localStorage.removeItem('madiffNewsletterData');
+                location.reload();
+            }
+        }
+
+        // DEVICE PREVIEW TOGGLE
+        function setPreviewDevice(device) {
+            const wrapper = document.getElementById('preview-wrapper');
+            const btnDesktop = document.getElementById('btn-view-desktop');
+            const btnMobile = document.getElementById('btn-view-mobile');
+
+            if (device === 'mobile') {
+                wrapper.classList.add('preview-mobile');
+                btnMobile.className = "px-3 py-1.5 rounded-md text-xs font-medium flex items-center space-x-2 transition bg-slate-700 text-white shadow-sm";
+                btnDesktop.className = "px-3 py-1.5 rounded-md text-xs font-medium flex items-center space-x-2 transition text-slate-400 hover:text-white";
+            } else {
+                wrapper.classList.remove('preview-mobile');
+                btnDesktop.className = "px-3 py-1.5 rounded-md text-xs font-medium flex items-center space-x-2 transition bg-slate-700 text-white shadow-sm";
+                btnMobile.className = "px-3 py-1.5 rounded-md text-xs font-medium flex items-center space-x-2 transition text-slate-400 hover:text-white";
+            }
+            updatePreview();
+        }
+
+        // EXPORT FUNCTIONS
+        function copyHTML() {
+            const html = generateFullHTML();
+            navigator.clipboard.writeText(html).then(() => {
+                showToast("HTML code copied successfully!");
+            });
+        }
+
+        function downloadHTML() {
+            const html = generateFullHTML();
+            const blob = new Blob([html], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'madiff-newsletter.html';
+            a.click();
+            showToast("File madiff-newsletter.html downloaded!");
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            toastMsg.innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // INIT
+        renderEditor();
+        updatePreview();
+    </script>
+</body>
+
+</html>
