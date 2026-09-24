@@ -163,7 +163,7 @@ export async function GET(request: Request) {
                 p.utm_campaign ||
                 p.hs_analytics_first_touch_converting_campaign ||
                 p.hs_analytics_last_touch_converting_campaign ||
-                "Direct / Inbound";
+                null;
 
             const createdDateFormatted = p.createdate
                 ? new Date(p.createdate).toISOString().split("T")[0]

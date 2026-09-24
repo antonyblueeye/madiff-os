@@ -14,12 +14,14 @@ import {
     Activity,
     Settings,
     ChevronRight,
+    Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const mainNavigation = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/crm", label: "Leads CRM", icon: Users, badge: "Omnichannel" },
+    { href: "/zoho-newsletter", label: "Newsletter Analytics", icon: Mail, badge: "Zoho Live" },
     { href: "/campaigns", label: "Campaigns", icon: Share2 },
     { href: "/newsletter-builder", label: "Newsletter Builder", icon: FileCode, badge: "Editor" },
     { href: "/content-plan", label: "Content Calendar", icon: CalendarDays },

@@ -1,0 +1,202 @@
+{
+  "company": {
+    "name": "Madiff",
+    "tagline": "Innovation & IT Consulting with Agile Remote Teams",
+    "website": "https://madiff.eu",
+    "clutchUrl": "https://clutch.co/profile/madiff",
+    "rating": 4.9,
+    "reviewCount": 4,
+    "scores": {
+      "quality": 5.0,
+      "schedule": 5.0,
+      "cost": 4.5,
+      "willingToRefer": 4.9
+    },
+    "minProjectSize": "$1,000+",
+    "hourlyRate": "$50 - $99 / hr",
+    "employeeSize": "50 - 249 employees",
+    "founded": "2015",
+    "mostCommonProjectSize": "< $49,999",
+    "headquarters": "Prosta 20, 00-850 Warszawa, Poland",
+    "phone": "+48 696705270",
+    "summary": "Madiff is a premium AI development and innovation consulting firm founded by Harvard-educated entrepreneurs, led by a senior leadership team based in the UK and France with over 35 years of combined experience delivering complex AI, data, and engineering programs for Fortune 500 and NASDAQ-listed organizations."
+  },
+  "locations": [
+    { "city": "Warszawa", "country": "Poland", "address": "Prosta 20, 00-850", "type": "Headquarters" },
+    { "city": "Kraków", "country": "Poland", "address": "Kraków Innovation Center", "type": "Engineering Hub" },
+    { "city": "Braga", "country": "Portugal", "address": "Braga Tech Hub", "type": "Delivery Office" },
+    { "city": "London", "country": "England, UK", "address": "London Business Hub", "type": "Client Office" },
+    { "city": "New York", "country": "NY, USA", "address": "NYC Client Relations", "type": "Representative Office" },
+    { "city": "Los Angeles", "country": "CA, USA", "address": "LA Tech Office", "type": "Representative Office" }
+  ],
+  "serviceLines": [
+    { "service": "AI Development", "percentage": 40, "color": "#354f52" },
+    { "service": "Custom Software Development", "percentage": 20, "color": "#52796f" },
+    { "service": "IT Managed Services", "percentage": 20, "color": "#84a98c" },
+    { "service": "Blockchain", "percentage": 10, "color": "#0077b5" },
+    { "service": "Cloud Consulting & SI", "percentage": 10, "color": "#e07a5f" }
+  ],
+  "aiFocus": [
+    { "area": "Machine Learning", "percentage": 25 },
+    { "area": "Natural Language Processing (NLP)", "percentage": 25 },
+    { "area": "Chatbots & Conversational AI", "percentage": 15 },
+    { "area": "AI Recommendation Systems", "percentage": 10 },
+    { "area": "Cognitive Computing", "percentage": 10 },
+    { "area": "Computer Vision", "percentage": 5 },
+    { "area": "Robotics", "percentage": 5 },
+    { "area": "Voice and Speech Recognition", "percentage": 5 }
+  ],
+  "industryFocus": [
+    { "industry": "Other Industries", "percentage": 20 },
+    { "industry": "Automotive", "percentage": 15 },
+    { "industry": "Information Technology", "percentage": 15 },
+    { "industry": "Consumer Products & Services", "percentage": 10 },
+    { "industry": "Financial Services", "percentage": 10 },
+    { "industry": "Medical / Healthcare", "percentage": 10 },
+    { "industry": "Supply Chain, Logistics & Transport", "percentage": 10 },
+    { "industry": "Telecommunications", "percentage": 10 }
+  ],
+  "clientSizeBreakdown": [
+    { "segment": "Small Business (<$10M)", "percentage": 50 },
+    { "segment": "Midmarket ($10M - $1B)", "percentage": 25 },
+    { "segment": "Enterprise (>$1B)", "percentage": 25 }
+  ],
+  "portfolioCaseStudies": [
+    {
+      "id": "case-1",
+      "title": "AI Credit Risk and Decisioning Platform",
+      "service": "AI Development",
+      "industry": "Financial Services",
+      "description": "Automated scoring model and risk decisioning engine processing historical transaction data to minimize default rates."
+    },
+    {
+      "id": "case-2",
+      "title": "AI Clinical Decision Support",
+      "service": "AI Development",
+      "industry": "Healthcare / Medical",
+      "description": "Diagnostic intelligence framework designed to assist physicians in real-time symptom analysis and patient triaging."
+    },
+    {
+      "id": "case-3",
+      "title": "Real Time AI Fraud Detection Platform",
+      "service": "AI Development",
+      "industry": "FinTech / Banking",
+      "description": "Low-latency streaming anomaly detection detecting fraudulent card and wire interactions in under 12ms."
+    },
+    {
+      "id": "case-4",
+      "title": "Predictive Maintenance AI Platform for Industrial",
+      "service": "AI Development",
+      "industry": "Automotive & Manufacturing",
+      "description": "IoT sensor ingestion model alerting engineering teams 72 hours before catastrophic assembly equipment failures."
+    },
+    {
+      "id": "case-5",
+      "title": "AI Customer Value & Churn Prediction",
+      "service": "AI Development",
+      "industry": "Consumer Products & SaaS",
+      "description": "Retention modeling system identifying at-risk accounts based on platform telemetry and feature adoption velocity."
+    },
+    {
+      "id": "case-6",
+      "title": "Enterprise Knowledge Graph & AI Search Platform",
+      "service": "Financial Advising & Enterprise AI",
+      "industry": "Enterprise Consulting",
+      "description": "Cross-repository vector search engine connecting proprietary PDFs, databases, and transcripts into instant executive insights."
+    }
+  ],
+  "reviews": [
+    {
+      "id": "rev-1",
+      "title": "Staff Augmentation for Assistance Company",
+      "quote": "Their commitment, efficiency, listening skills, and professionalism were impressive.",
+      "rating": 5.0,
+      "scores": {
+        "quality": 5.0,
+        "schedule": 5.0,
+        "cost": 5.0,
+        "refer": 5.0
+      },
+      "reviewer": "Pawel SLYSZ",
+      "role": "Local CIO",
+      "company": "AWP Polska SP. z o.o.",
+      "industry": "Financial services",
+      "location": "Poland",
+      "companySize": "201-500 employees",
+      "service": "IT Staff Augmentation",
+      "cost": "$50,000 to $199,999",
+      "dates": "Jan - June 2020",
+      "summary": "Madiff provided competent developers at a reasonable cost. The team helped enhance legacy systems such as the web-based insurance selling portal and core assistance system. Deliverables were managed in tight two-week SCRUM sprints with flawless velocity.",
+      "verified": true
+    },
+    {
+      "id": "rev-2",
+      "title": "AI System Development for IoT & UAV Solutions Company",
+      "quote": "Madiff treated the project with real ownership, almost as if it were their own startup product.",
+      "rating": 5.0,
+      "scores": {
+        "quality": 5.0,
+        "schedule": 5.0,
+        "cost": 5.0,
+        "refer": 5.0
+      },
+      "reviewer": "Maks D",
+      "role": "CEO",
+      "company": "IoT & UAV Solutions Company",
+      "industry": "Manufacturing",
+      "location": "Warsaw, Poland",
+      "companySize": "11-50 employees",
+      "service": "AI Development, IT Managed Services",
+      "cost": "$10,000 to $49,999",
+      "dates": "Feb - Apr 2026",
+      "summary": "Madiff developed an end-to-end AI system integrating automated workflows, backend architecture, and machine learning models for drone/UAV platforms, significantly boosting operational automation and customer satisfaction.",
+      "verified": true
+    },
+    {
+      "id": "rev-3",
+      "title": "BI & Big Data Consulting & SI for Data Analytics Company",
+      "quote": "I was impressed that Madiff was ahead of schedule.",
+      "rating": 4.9,
+      "scores": {
+        "quality": 5.0,
+        "schedule": 5.0,
+        "cost": 4.0,
+        "refer": 4.5
+      },
+      "reviewer": "Verified Director",
+      "role": "Director",
+      "company": "Data Analytics Company (Confidential)",
+      "industry": "Information Technology",
+      "location": "London, England, UK",
+      "companySize": "51-200 employees",
+      "service": "BI & Big Data Consulting & SI",
+      "cost": "Confidential",
+      "dates": "Aug 2019 - July 2020",
+      "summary": "Madiff provided high-tier BI and big data consulting to eliminate internal deployment blockers and streamline analytics throughput. Their intervention directly contributed to a 14% YoY revenue increase, with 10% directly attributed to Madiff's engineering pod.",
+      "verified": true
+    },
+    {
+      "id": "rev-4",
+      "title": "Web Dev for International Consulting Firm",
+      "quote": "We were impressed by the responsiveness of the project managers.",
+      "rating": 4.5,
+      "scores": {
+        "quality": 5.0,
+        "schedule": 5.0,
+        "cost": 4.0,
+        "refer": 5.0
+      },
+      "reviewer": "Business Manager",
+      "role": "Business Manager",
+      "company": "International Consulting Firm",
+      "industry": "Information Technology",
+      "location": "Warsaw, Poland",
+      "companySize": "51-200 employees",
+      "service": "Web Development & App Infrastructure",
+      "cost": "$200,000 to $999,999",
+      "dates": "May 2025 - Jan 2026",
+      "summary": "Madiff designed, structured, and deployed complex enterprise infrastructure and custom web software for a global consulting firm, managing team assembly, sprint rituals, architecture design, and final execution.",
+      "verified": true
+    }
+  ]
+}

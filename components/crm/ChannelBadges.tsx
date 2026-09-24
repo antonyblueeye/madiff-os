@@ -1,27 +1,26 @@
 "use client";
 
 import Image from "next/image";
-import { Plus, Check, ExternalLink } from "lucide-react";
+import { Plus, Check } from "lucide-react";
 import { LeadItem } from "@/lib/mock-data";
 
 interface ChannelBadgesProps {
     lead: LeadItem;
-    onChannelClick: (channelKey: "apollo" | "hubspot" | "reply" | "linkedhelper" | "zoho", lead: LeadItem) => void;
+    onChannelClick: (channelKey: "hubspot" | "reply" | "linkedhelper", lead: LeadItem) => void;
 }
 
+// Outbound direct outreach channels only (Apollo is source-only, Zoho is dedicated to Newsletter Analytics)
 const channelConfig = [
-    { key: "apollo", name: "Apollo.io", logo: "/apollo.jpg", actionName: "Enrich via Apollo" },
     { key: "hubspot", name: "HubSpot", logo: "/hubspot.png", actionName: "Sync to HubSpot" },
     { key: "reply", name: "Reply.io", logo: "/reply.png", actionName: "Enroll in Reply.io" },
     { key: "linkedhelper", name: "LinkedHelper", logo: "/linkedhelper.png", actionName: "Send via LinkedHelper" },
-    { key: "zoho", name: "Zoho Campaigns", logo: "/zoho_campaigns.webp", actionName: "Add to Zoho Newsletter" },
 ] as const;
 
 export function ChannelBadges({ lead, onChannelClick }: ChannelBadgesProps) {
     return (
         <div className="flex items-center gap-1.5">
             {channelConfig.map((ch) => {
-                const status = lead.channels[ch.key];
+                const status = (lead.channels as any)?.[ch.key];
                 const isActive = status?.active;
 
                 return (

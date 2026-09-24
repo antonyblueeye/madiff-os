@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { crmLeadsData, LeadItem } from "@/lib/mock-data";
+import { LeadItem } from "@/lib/mock-data";
 import { PagePlaceholder } from "@/components/ui/PagePlaceholder";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -13,31 +13,31 @@ import { ApolloImportModal } from "@/components/crm/ApolloImportModal";
 import {
     Users,
     Search,
-    Filter,
     Plus,
     CheckCircle2,
     Building2,
-    MapPin,
     ArrowRight,
     RefreshCw,
-    Calendar,
     UserCheck,
-    Megaphone,
-    Activity,
     ChevronLeft,
     ChevronRight,
     ChevronsLeft,
     ChevronsRight,
     X,
+    ExternalLink,
+    Database,
+    Globe,
 } from "lucide-react";
 
 const ITEMS_PER_PAGE_OPTIONS = [15, 25, 50, 100];
 
 export default function CRMPage() {
-    const [leads, setLeads] = useState<LeadItem[]>(crmLeadsData);
-    const [isLoadingHubspot, setIsLoadingHubspot] = useState(false);
-    const [isHubspotLive, setIsHubspotLive] = useState(false);
-    
+    const [leads, setLeads] = useState<LeadItem[]>([]);
+    const [totalCount, setTotalCount] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSyncing, setIsSyncing] = useState(false);
+
     // Filter & Search states
     const [searchQuery, setSearchQuery] = useState("");
     const [filterName, setFilterName] = useState("");
@@ -50,6 +50,11 @@ export default function CRMPage() {
     const [filterDateFrom, setFilterDateFrom] = useState("");
     const [filterDateTo, setFilterDateTo] = useState("");
 
+    // Dynamic dropdown filter options from DB
+    const [availableOwners, setAvailableOwners] = useState<string[]>([]);
+    const [availableStages, setAvailableStages] = useState<string[]>([]);
+    const [availableCampaigns, setAvailableCampaigns] = useState<string[]>([]);
+
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
@@ -58,73 +63,158 @@ export default function CRMPage() {
     const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
     const [drawerLead, setDrawerLead] = useState<LeadItem | null>(null);
     const [channelModalInfo, setChannelModalInfo] = useState<{
-        channelKey: "apollo" | "hubspot" | "reply" | "linkedhelper" | "zoho";
+        channelKey: "hubspot" | "reply" | "linkedhelper" | "zoho";
         leads: LeadItem[];
     } | null>(null);
     const [isApolloImportOpen, setIsApolloImportOpen] = useState(false);
     const [notification, setNotification] = useState<string | null>(null);
+    const [pendingPushCount, setPendingPushCount] = useState(0);
+    const [isPushingPending, setIsPushingPending] = useState(false);
 
-    // Fetch live contacts from HubSpot on mount or when requested
-    const fetchHubSpotLeads = async () => {
-        setIsLoadingHubspot(true);
+    // Fetch leads from our PostgreSQL database
+    const loadLeadsFromDb = useCallback(async () => {
+        setIsLoading(true);
         try {
-            const res = await fetch("/api/hubspot/contacts?all=true");
+            const params = new URLSearchParams({
+                page: String(currentPage),
+                limit: String(pageSize),
+            });
+
+            if (searchQuery) params.set("search", searchQuery);
+            if (filterName) params.set("name", filterName);
+            if (filterEmail) params.set("email", filterEmail);
+            if (filterCompany) params.set("company", filterCompany);
+            if (filterOwner && filterOwner !== "All") params.set("owner", filterOwner);
+            if (filterLifecycleStage && filterLifecycleStage !== "All") params.set("lifecycleStage", filterLifecycleStage);
+            if (filterCampaign && filterCampaign !== "All") params.set("campaign", filterCampaign);
+            if (filterChannel && filterChannel !== "All") params.set("channel", filterChannel);
+            if (filterDateFrom) params.set("dateFrom", filterDateFrom);
+            if (filterDateTo) params.set("dateTo", filterDateTo);
+
+            const res = await fetch(`/api/leads?${params.toString()}`);
             const data = await res.json();
-            if (res.ok && data.leads && data.leads.length > 0) {
-                setLeads(data.leads);
-                setIsHubspotLive(true);
-                setNotification(`Loaded all ${data.leads.length} live contacts directly from your connected HubSpot account!`);
-                setTimeout(() => setNotification(null), 4000);
+
+            if (res.ok) {
+                setLeads(data.leads || []);
+                setTotalCount(data.totalCount || 0);
+                setTotalPages(data.totalPages || 1);
+                setPendingPushCount(data.pendingPushCount || 0);
+                if (data.availableOwners) setAvailableOwners(data.availableOwners);
+                if (data.availableStages) setAvailableStages(data.availableStages);
+                if (data.availableCampaigns) setAvailableCampaigns(data.availableCampaigns);
             } else {
-                setNotification(data.error || "Could not fetch HubSpot leads");
+                setNotification(data.error || "Failed to load leads from database");
             }
         } catch (err: any) {
-            setNotification(`HubSpot sync error: ${err.message}`);
+            setNotification(`Database error: ${err.message}`);
         } finally {
-            setIsLoadingHubspot(false);
+            setIsLoading(false);
+        }
+    }, [
+        currentPage,
+        pageSize,
+        searchQuery,
+        filterName,
+        filterEmail,
+        filterCompany,
+        filterOwner,
+        filterLifecycleStage,
+        filterCampaign,
+        filterChannel,
+        filterDateFrom,
+        filterDateTo,
+    ]);
+
+    // Push all pending changes to HubSpot CRM
+    const pushAllPendingToHubSpot = async () => {
+        setIsPushingPending(true);
+        try {
+            setNotification("Pushing modified contacts to HubSpot CRM...");
+            const res = await fetch("/api/leads/push-hubspot", { method: "POST" });
+            const data = await res.json();
+            if (res.ok) {
+                setNotification(`Pushed ${data.pushedCount} modified contacts to HubSpot successfully!`);
+                await loadLeadsFromDb();
+            } else {
+                setNotification(data.error || "Push to HubSpot failed");
+            }
+        } catch (err: any) {
+            setNotification(`Push failed: ${err.message}`);
+        } finally {
+            setIsPushingPending(false);
+            setTimeout(() => setNotification(null), 5000);
         }
     };
 
+    // Initial load and filter reaction
     useEffect(() => {
-        fetchHubSpotLeads();
-    }, []);
+        loadLeadsFromDb();
+    }, [loadLeadsFromDb]);
 
-    // Unique owners list for dropdown
-    const availableOwners = useMemo(() => {
-        const owners = new Set<string>();
-        leads.forEach((l) => {
-            if (l.contactOwner && l.contactOwner !== "Unassigned") {
-                owners.add(l.contactOwner);
+    // Synchronize HubSpot into PostgreSQL with live progress polling (instant incremental by default)
+    const syncHubSpotToDb = async (full = false) => {
+        setIsSyncing(true);
+        try {
+            setNotification(full ? "Starting full sync from HubSpot (~40k contacts)..." : "Checking HubSpot for recently updated contacts...");
+            const res = await fetch(`/api/leads/sync${full ? "?full=true" : ""}`, { method: "POST" });
+            const data = await res.json();
+            if (!res.ok) {
+                setNotification(data.error || "Sync failed to start");
+                setIsSyncing(false);
+                return;
             }
-        });
-        return Array.from(owners).sort();
-    }, [leads]);
 
-    // Unique campaigns list for dropdown
-    const availableCampaigns = useMemo(() => {
-        const campaigns = new Set<string>();
-        leads.forEach((l) => {
-            if (l.campaign && l.campaign !== "Direct / Inbound") {
-                campaigns.add(l.campaign);
+            // Poll progress
+            const interval = setInterval(async () => {
+                try {
+                    const statusRes = await fetch("/api/leads/sync");
+                    const statusData = await statusRes.json();
+
+                    if (statusData.isRunning) {
+                        setNotification(statusData.statusMessage || "Sync in progress...");
+                        loadLeadsFromDb();
+                    } else {
+                        clearInterval(interval);
+                        setIsSyncing(false);
+                        setNotification(
+                            statusData.statusMessage || `Sync completed! Updated ${statusData.syncedCount} contacts.`
+                        );
+                        loadLeadsFromDb();
+                        setTimeout(() => setNotification(null), 6000);
+                    }
+                } catch {
+                    clearInterval(interval);
+                    setIsSyncing(false);
+                }
+            }, 1500);
+        } catch (err: any) {
+            setNotification(`Sync failed: ${err.message}`);
+            setIsSyncing(false);
+        }
+    };
+
+    // Synchronize Reply.io into PostgreSQL (campaigns, conversations, replies)
+    const [isSyncingReply, setIsSyncingReply] = useState(false);
+    const syncReplyToDb = async () => {
+        setIsSyncingReply(true);
+        try {
+            setNotification("Syncing Reply.io campaigns, messages & reply statuses...");
+            const res = await fetch("/api/reply/sync", { method: "POST" });
+            const data = await res.json();
+            if (res.ok) {
+                setNotification(data.message || `Reply.io sync completed! (${data.contactsUpdatedCount} contacts updated)`);
+                await loadLeadsFromDb();
+            } else {
+                setNotification(`Reply.io sync error: ${data.error || "Failed"}`);
             }
-        });
-        return Array.from(campaigns).sort();
-    }, [leads]);
+        } catch (err: any) {
+            setNotification(`Reply.io sync failed: ${err.message}`);
+        } finally {
+            setIsSyncingReply(false);
+            setTimeout(() => setNotification(null), 6000);
+        }
+    };
 
-    // Unique lifecycle stages list for dropdown
-    const availableLifecycleStages = useMemo(() => {
-        const stages = new Set<string>();
-        leads.forEach((l) => {
-            if (l.lifecycleStage) {
-                stages.add(l.lifecycleStage);
-            } else if (l.stage) {
-                stages.add(l.stage);
-            }
-        });
-        return Array.from(stages).sort();
-    }, [leads]);
-
-    // Check if any filters are active
     const hasActiveFilters = Boolean(
         searchQuery ||
         filterName ||
@@ -152,100 +242,7 @@ export default function CRMPage() {
         setCurrentPage(1);
     };
 
-    // Filter leads according to user criteria
-    const filteredLeads = useMemo(() => {
-        return leads.filter((lead) => {
-            // General quick search
-            if (searchQuery) {
-                const q = searchQuery.toLowerCase();
-                const matchGeneral =
-                    lead.name.toLowerCase().includes(q) ||
-                    lead.email.toLowerCase().includes(q) ||
-                    lead.company.toLowerCase().includes(q) ||
-                    (lead.title && lead.title.toLowerCase().includes(q)) ||
-                    (lead.contactOwner && lead.contactOwner.toLowerCase().includes(q)) ||
-                    (lead.campaign && lead.campaign.toLowerCase().includes(q));
-                if (!matchGeneral) return false;
-            }
-
-            // Name filter
-            if (filterName && !lead.name.toLowerCase().includes(filterName.toLowerCase())) {
-                return false;
-            }
-
-            // Email filter
-            if (filterEmail && !lead.email.toLowerCase().includes(filterEmail.toLowerCase())) {
-                return false;
-            }
-
-            // Company filter
-            if (filterCompany && !lead.company.toLowerCase().includes(filterCompany.toLowerCase())) {
-                return false;
-            }
-
-            // Contact Owner filter
-            if (filterOwner !== "All") {
-                if (lead.contactOwner !== filterOwner) return false;
-            }
-
-            // Lifecycle Stage filter
-            if (filterLifecycleStage !== "All") {
-                const currentStage = (lead.lifecycleStage || lead.stage || "").toLowerCase();
-                if (currentStage !== filterLifecycleStage.toLowerCase()) return false;
-            }
-
-            // Campaign filter
-            if (filterCampaign !== "All") {
-                if (lead.campaign !== filterCampaign) return false;
-            }
-
-            // Channel filter
-            if (filterChannel !== "All") {
-                if (filterChannel === "hubspot" && !lead.channels.hubspot?.active) return false;
-                if (filterChannel === "apollo" && !lead.channels.apollo?.active) return false;
-                if (filterChannel === "reply" && !lead.channels.reply?.active) return false;
-                if (filterChannel === "linkedhelper" && !lead.channels.linkedhelper?.active) return false;
-                if (filterChannel === "zoho" && !lead.channels.zoho?.active) return false;
-            }
-
-            // Date Created filter (From / To)
-            if (filterDateFrom && lead.createdDate) {
-                if (lead.createdDate < filterDateFrom) return false;
-            }
-            if (filterDateTo && lead.createdDate) {
-                if (lead.createdDate > filterDateTo) return false;
-            }
-
-            return true;
-        });
-    }, [
-        leads,
-        searchQuery,
-        filterName,
-        filterEmail,
-        filterCompany,
-        filterOwner,
-        filterLifecycleStage,
-        filterCampaign,
-        filterChannel,
-        filterDateFrom,
-        filterDateTo,
-    ]);
-
-    // Reset to page 1 whenever filters change
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [filteredLeads.length]);
-
-    // Pagination calculations
-    const totalItems = filteredLeads.length;
-    const totalPages = Math.ceil(totalItems / pageSize) || 1;
-    const startIndex = (currentPage - 1) * pageSize;
-    const paginatedLeads = useMemo(() => {
-        return filteredLeads.slice(startIndex, startIndex + pageSize);
-    }, [filteredLeads, startIndex, pageSize]);
-
-    // Row selection logic
+    // Selection handlers
     const toggleSelectRow = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         setSelectedLeadIds((prev) =>
@@ -254,8 +251,8 @@ export default function CRMPage() {
     };
 
     const toggleSelectAll = () => {
-        const pageIds = paginatedLeads.map((l) => l.id);
-        const allPageSelected = pageIds.every((id) => selectedLeadIds.includes(id));
+        const pageIds = leads.map((l) => l.id);
+        const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedLeadIds.includes(id));
         if (allPageSelected) {
             setSelectedLeadIds((prev) => prev.filter((id) => !pageIds.includes(id)));
         } else {
@@ -263,9 +260,9 @@ export default function CRMPage() {
         }
     };
 
-    // Handle single channel badge click
+    // Push channel modal handler
     const handleChannelBadgeClick = (
-        channelKey: "apollo" | "hubspot" | "reply" | "linkedhelper" | "zoho",
+        channelKey: "hubspot" | "reply" | "linkedhelper",
         lead: LeadItem
     ) => {
         setChannelModalInfo({
@@ -274,8 +271,7 @@ export default function CRMPage() {
         });
     };
 
-    // Handle bulk push click
-    const handleBulkPush = (channelKey: "apollo" | "hubspot" | "reply" | "linkedhelper" | "zoho") => {
+    const handleBulkPush = (channelKey: "hubspot" | "reply" | "linkedhelper") => {
         const selectedList = leads.filter((l) => selectedLeadIds.includes(l.id));
         if (selectedList.length === 0) return;
         setChannelModalInfo({
@@ -284,67 +280,102 @@ export default function CRMPage() {
         });
     };
 
-    // Callback on modal success
-    const handleChannelSuccess = (channelKey: string, leadIds: string[], details: string) => {
-        setLeads((prev) =>
-            prev.map((l) => {
-                if (leadIds.includes(l.id)) {
-                    return {
-                        ...l,
-                        channels: {
-                            ...l.channels,
-                            [channelKey]: {
-                                active: true,
-                                statusText: "Active / Queued",
-                                details,
-                                dateAdded: "Today",
-                            },
-                        },
-                        timeline: [
-                            {
-                                date: "Today",
-                                channel: channelKey.toUpperCase(),
-                                event: `Dispatched: ${details}`,
-                            },
-                            ...l.timeline,
-                        ],
-                    };
-                }
-                return l;
-            })
-        );
+    const handleChannelSuccess = async (channelKey: string, leadIds: string[], details: string) => {
         setChannelModalInfo(null);
         setSelectedLeadIds([]);
-        setNotification(
-            `Successfully dispatched ${leadIds.length} contact(s) to ${channelKey.toUpperCase()} (${details})`
-        );
+
+        if (channelKey === "hubspot") {
+            try {
+                setNotification(`Pushing ${leadIds.length} contact(s) directly to HubSpot CRM...`);
+                const res = await fetch("/api/leads/push-hubspot", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ leadIds }),
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    setNotification(
+                        `Successfully synced ${data.pushedCount} contact(s) to HubSpot CRM! (${details})`
+                    );
+                    await loadLeadsFromDb();
+                } else {
+                    setNotification(`HubSpot sync error: ${data.error || "Failed"}`);
+                }
+            } catch (err: any) {
+                setNotification(`HubSpot sync error: ${err.message}`);
+            }
+        } else {
+            setNotification(
+                `Successfully dispatched ${leadIds.length} contact(s) to ${channelKey.toUpperCase()} (${details})`
+            );
+            await loadLeadsFromDb();
+        }
+        setTimeout(() => setNotification(null), 5000);
+    };
+
+    const handleApolloImportSuccess = () => {
+        setIsApolloImportOpen(false);
+        loadLeadsFromDb();
+        setNotification(`Imported contacts from Apollo.io into CRM!`);
         setTimeout(() => setNotification(null), 4000);
     };
 
-    // Callback when leads imported from Apollo
-    const handleApolloImportSuccess = (imported: LeadItem[]) => {
-        setLeads((prev) => [...imported, ...prev]);
-        setIsApolloImportOpen(false);
-        setNotification(`Imported ${imported.length} verified decision-makers from Apollo.io into CRM!`);
-        setTimeout(() => setNotification(null), 4000);
-    };
+    const startIndex = (currentPage - 1) * pageSize;
 
     return (
         <PagePlaceholder
             title="Lead CRM & Omnichannel Control"
-            description="Universal contact repository with real-time sync across Apollo, HubSpot, Reply.io, LinkedHelper, and Zoho."
+            description="Universal contact repository powered by local PostgreSQL database with bidirectional HubSpot synchronization."
             icon={Users}
-            tag={isHubspotLive ? "HubSpot Live Connected" : `${leads.length} Leads in DB`}
+            tag={`PostgreSQL: ${totalCount.toLocaleString()} Leads`}
             action={
                 <div className="flex items-center gap-2">
+                    {pendingPushCount > 0 && (
+                        <button
+                            onClick={pushAllPendingToHubSpot}
+                            disabled={isPushingPending}
+                            className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-amber-700 transition-colors disabled:opacity-50 animate-in fade-in"
+                            title="Push modified contacts to HubSpot CRM"
+                        >
+                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white text-[10px] font-black text-amber-700">
+                                {pendingPushCount}
+                            </span>
+                            <span>{isPushingPending ? "Pushing..." : "Push to HubSpot"}</span>
+                        </button>
+                    )}
+
+                    <div className="flex items-center rounded-lg border border-[#eaedf3] bg-white shadow-sm overflow-hidden">
+                        <button
+                            onClick={() => syncHubSpotToDb(false)}
+                            disabled={isSyncing}
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#354f52] hover:bg-[#f8fafc] transition-colors disabled:opacity-50"
+                            title="Quick Incremental Sync: Updates only contacts modified since last sync"
+                        >
+                            <RefreshCw className={`h-3.5 w-3.5 text-[#354f52] ${isSyncing ? "animate-spin" : ""}`} />
+                            {isSyncing ? "Syncing..." : "Quick Sync"}
+                        </button>
+                        <span className="h-4 w-px bg-[#eaedf3]" />
+                        <button
+                            onClick={() => syncHubSpotToDb(true)}
+                            disabled={isSyncing}
+                            className="px-2.5 py-2 text-[10px] font-bold text-[#6e84a3] hover:text-[#1f2d3d] hover:bg-[#f8fafc] transition-colors disabled:opacity-50"
+                            title="Full Sync: Download all 40,000+ contacts from scratch"
+                        >
+                            Full Sync
+                        </button>
+                    </div>
+
+                    {/* Reply.io Sync Button */}
                     <button
-                        onClick={fetchHubSpotLeads}
-                        disabled={isLoadingHubspot}
-                        className="flex items-center gap-1.5 rounded-lg border border-[#eaedf3] bg-white px-3.5 py-2 text-xs font-bold text-[#354f52] shadow-sm hover:bg-[#f8fafc] transition-colors disabled:opacity-50"
+                        onClick={syncReplyToDb}
+                        disabled={isSyncingReply}
+                        className="flex items-center gap-1.5 rounded-lg border border-[#eaedf3] bg-white px-3 py-2 text-xs font-bold text-[#354f52] shadow-xs hover:bg-[#f8fafc] transition-colors disabled:opacity-50"
+                        title="Sync Reply.io campaigns, activities, messages and replies into PostgreSQL"
                     >
-                        <RefreshCw className={`h-3.5 w-3.5 text-[#354f52] ${isLoadingHubspot ? "animate-spin" : ""}`} />
-                        {isLoadingHubspot ? "Syncing..." : "Sync HubSpot"}
+                        <RefreshCw className={`h-3.5 w-3.5 text-emerald-600 ${isSyncingReply ? "animate-spin" : ""}`} />
+                        {isSyncingReply ? "Syncing Reply..." : "Sync Reply.io"}
                     </button>
+
                     <button
                         onClick={() => setIsApolloImportOpen(true)}
                         className="flex items-center gap-1.5 rounded-lg bg-[#354f52] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#2f3e46] transition-colors"
@@ -371,7 +402,10 @@ export default function CRMPage() {
                             <Search className="h-4 w-4 text-[#95aac9] shrink-0" />
                             <input
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    setCurrentPage(1);
+                                }}
                                 placeholder="Search by name, email, company, title..."
                                 className="bg-transparent text-xs text-[#1f2d3d] outline-none w-full placeholder:text-[#95aac9]"
                             />
@@ -432,7 +466,10 @@ export default function CRMPage() {
                         <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Name</label>
                         <input
                             value={filterName}
-                            onChange={(e) => setFilterName(e.target.value)}
+                            onChange={(e) => {
+                                setFilterName(e.target.value);
+                                setCurrentPage(1);
+                            }}
                             placeholder="Filter name..."
                             className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2.5 py-1.5 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52] focus:bg-white"
                         />
@@ -443,7 +480,10 @@ export default function CRMPage() {
                         <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Email</label>
                         <input
                             value={filterEmail}
-                            onChange={(e) => setFilterEmail(e.target.value)}
+                            onChange={(e) => {
+                                setFilterEmail(e.target.value);
+                                setCurrentPage(1);
+                            }}
                             placeholder="Filter email..."
                             className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2.5 py-1.5 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52] focus:bg-white"
                         />
@@ -454,7 +494,10 @@ export default function CRMPage() {
                         <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Company</label>
                         <input
                             value={filterCompany}
-                            onChange={(e) => setFilterCompany(e.target.value)}
+                            onChange={(e) => {
+                                setFilterCompany(e.target.value);
+                                setCurrentPage(1);
+                            }}
                             placeholder="Filter company..."
                             className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2.5 py-1.5 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52] focus:bg-white"
                         />
@@ -465,7 +508,10 @@ export default function CRMPage() {
                         <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Contact Owner</label>
                         <select
                             value={filterOwner}
-                            onChange={(e) => setFilterOwner(e.target.value)}
+                            onChange={(e) => {
+                                setFilterOwner(e.target.value);
+                                setCurrentPage(1);
+                            }}
                             className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2 py-1.5 text-xs text-[#1f2d3d] outline-none cursor-pointer focus:border-[#354f52] focus:bg-white"
                         >
                             <option value="All">All Owners</option>
@@ -482,11 +528,14 @@ export default function CRMPage() {
                         <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Lifecycle Stage</label>
                         <select
                             value={filterLifecycleStage}
-                            onChange={(e) => setFilterLifecycleStage(e.target.value)}
+                            onChange={(e) => {
+                                setFilterLifecycleStage(e.target.value);
+                                setCurrentPage(1);
+                            }}
                             className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2 py-1.5 text-xs text-[#1f2d3d] outline-none cursor-pointer focus:border-[#354f52] focus:bg-white capitalize"
                         >
                             <option value="All">All Stages</option>
-                            {availableLifecycleStages.map((stage) => (
+                            {availableStages.map((stage) => (
                                 <option key={stage} value={stage}>
                                     {stage}
                                 </option>
@@ -499,7 +548,10 @@ export default function CRMPage() {
                         <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Campaign</label>
                         <select
                             value={filterCampaign}
-                            onChange={(e) => setFilterCampaign(e.target.value)}
+                            onChange={(e) => {
+                                setFilterCampaign(e.target.value);
+                                setCurrentPage(1);
+                            }}
                             className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2 py-1.5 text-xs text-[#1f2d3d] outline-none cursor-pointer focus:border-[#354f52] focus:bg-white"
                         >
                             <option value="All">All Campaigns</option>
@@ -511,20 +563,23 @@ export default function CRMPage() {
                         </select>
                     </div>
 
-                    {/* Date Created Filter (From - To) */}
+                    {/* Created Date Filter (From) */}
                     <div className="space-y-1">
                         <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Created Date (From)</label>
                         <input
                             type="date"
                             value={filterDateFrom}
-                            onChange={(e) => setFilterDateFrom(e.target.value)}
+                            onChange={(e) => {
+                                setFilterDateFrom(e.target.value);
+                                setCurrentPage(1);
+                            }}
                             className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2 py-1 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52] focus:bg-white"
                         />
                     </div>
                 </div>
             </div>
 
-            {/* Leads Table with Clean Columns (Deal/Value completely removed) */}
+            {/* Leads Table: Contact | Title | Company | LinkedIn | Lifecycle Stage | Contact Owner */}
             <Card className="p-0 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
@@ -534,32 +589,41 @@ export default function CRMPage() {
                                     <input
                                         type="checkbox"
                                         checked={
-                                            paginatedLeads.length > 0 &&
-                                            paginatedLeads.every((l) => selectedLeadIds.includes(l.id))
+                                            leads.length > 0 &&
+                                            leads.every((l) => selectedLeadIds.includes(l.id))
                                         }
                                         onChange={toggleSelectAll}
                                         className="rounded border-[#eaedf3] text-[#354f52]"
                                     />
                                 </th>
-                                <th className="py-3.5 px-4">Contact & Email</th>
-                                <th className="py-3.5 px-4">Company & Location</th>
-                                <th className="py-3.5 px-4">Contact Owner</th>
+                                <th className="py-3.5 px-4">Contact</th>
+                                <th className="py-3.5 px-4">Title</th>
+                                <th className="py-3.5 px-4">Company</th>
+                                <th className="py-3.5 px-4 text-center">LinkedIn</th>
                                 <th className="py-3.5 px-4">Lifecycle Stage</th>
-                                <th className="py-3.5 px-4">Campaign</th>
-                                <th className="py-3.5 px-4">Created Date</th>
-                                <th className="py-3.5 px-4 text-center">Channels</th>
+                                <th className="py-3.5 px-4">Contact Owner</th>
+                                <th className="py-3.5 px-4 text-center">Channels (HS / Reply / LH / Zoho)</th>
                                 <th className="py-3.5 px-4 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[#eaedf3]">
-                            {paginatedLeads.length === 0 ? (
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={9} className="py-12 text-center text-xs text-[#6e84a3]">
+                                        <div className="inline-flex items-center gap-2">
+                                            <RefreshCw className="h-4 w-4 animate-spin text-[#354f52]" />
+                                            <span>Loading leads from PostgreSQL database...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : leads.length === 0 ? (
                                 <tr>
                                     <td colSpan={9} className="py-12 text-center text-xs text-[#95aac9]">
-                                        No contacts match your active filters. Try resetting the criteria.
+                                        No contacts found matching your criteria. Try resetting filters or clicking &quot;Sync HubSpot to DB&quot;.
                                     </td>
                                 </tr>
                             ) : (
-                                paginatedLeads.map((lead) => {
+                                leads.map((lead) => {
                                     const isSelected = selectedLeadIds.includes(lead.id);
 
                                     return (
@@ -582,40 +646,61 @@ export default function CRMPage() {
                                                 />
                                             </td>
 
-                                            {/* Contact & Email */}
+                                            {/* 1. Contact (Name & Email) */}
                                             <td className="py-3.5 px-4 pr-3">
                                                 <div className="font-extrabold text-[#1f2d3d] flex items-center gap-1.5">
-                                                    {lead.name}
-                                                </div>
-                                                <div className="text-[11px] text-[#52796f] font-semibold">
-                                                    {lead.title}
+                                                    <span>{lead.name}</span>
+                                                    {lead.syncStatus === "pending_push" && (
+                                                        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300" title="Modified locally - waiting to be pushed to HubSpot">
+                                                            Pending
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="text-[11px] text-[#354f52] font-mono mt-0.5">
                                                     {lead.email}
                                                 </div>
                                             </td>
 
-                                            {/* Company & Location */}
+                                            {/* 2. Title */}
                                             <td className="py-3.5 px-4">
-                                                <div className="font-bold text-[#1f2d3d] flex items-center gap-1">
-                                                    <Building2 className="h-3 w-3 text-[#6e84a3]" />
-                                                    <span>{lead.company || "Not Specified"}</span>
-                                                </div>
-                                                <div className="text-[11px] text-[#6e84a3] flex items-center gap-1 mt-0.5">
-                                                    <MapPin className="h-3 w-3 text-[#95aac9]" />
-                                                    <span>{lead.location}</span>
-                                                </div>
+                                                <span className="text-xs font-semibold text-[#52796f]">
+                                                    {lead.title || "—"}
+                                                </span>
                                             </td>
 
-                                            {/* Contact Owner */}
+                                            {/* 3. Company & Domain */}
                                             <td className="py-3.5 px-4">
-                                                <div className="inline-flex items-center gap-1 text-[11px] font-bold text-[#1f2d3d] bg-[#f8fafc] border border-[#eaedf3] px-2 py-0.5 rounded-md">
-                                                    <UserCheck className="h-3 w-3 text-[#354f52]" />
-                                                    <span>{lead.contactOwner || "Unassigned"}</span>
+                                                <div className="font-bold text-[#1f2d3d] flex items-center gap-1.5">
+                                                    <Building2 className="h-3.5 w-3.5 text-[#6e84a3] shrink-0" />
+                                                    <span className="truncate max-w-[160px]">{lead.company || "Not Specified"}</span>
                                                 </div>
+                                                {lead.companyDomainName && (
+                                                    <div className="text-[10px] font-mono text-[#6e84a3] flex items-center gap-1 mt-0.5">
+                                                        <Globe className="h-2.5 w-2.5 text-[#95aac9]" />
+                                                        <span>{lead.companyDomainName}</span>
+                                                    </div>
+                                                )}
                                             </td>
 
-                                            {/* Lifecycle Stage */}
+                                            {/* 4. LinkedIn (Profile link + status badge) */}
+                                            <td className="py-3.5 px-4 text-center">
+                                                {lead.linkedinUrl ? (
+                                                    <a
+                                                        href={lead.linkedinUrl}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="inline-flex items-center gap-1 rounded bg-[#0077b5]/10 px-2 py-0.5 text-[11px] font-bold text-[#0077b5] hover:bg-[#0077b5]/20 transition-colors"
+                                                    >
+                                                        <span>View</span>
+                                                        <ExternalLink className="h-2.5 w-2.5" />
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-[11px] text-[#95aac9] font-medium">—</span>
+                                                )}
+                                            </td>
+
+                                            {/* 5. Lifecycle Stage */}
                                             <td className="py-3.5 px-4">
                                                 <Badge
                                                     variant={
@@ -634,19 +719,15 @@ export default function CRMPage() {
                                                 </Badge>
                                             </td>
 
-                                            {/* Campaign */}
+                                            {/* 6. Contact Owner */}
                                             <td className="py-3.5 px-4">
-                                                <div className="text-[11px] font-semibold text-[#475569] truncate max-w-[140px]" title={lead.campaign}>
-                                                    {lead.campaign || "Direct / Inbound"}
+                                                <div className="inline-flex items-center gap-1 text-[11px] font-bold text-[#1f2d3d] bg-[#f8fafc] border border-[#eaedf3] px-2 py-0.5 rounded-md">
+                                                    <UserCheck className="h-3 w-3 text-[#354f52]" />
+                                                    <span>{lead.contactOwner || "Unassigned"}</span>
                                                 </div>
                                             </td>
 
-                                            {/* Created Date */}
-                                            <td className="py-3.5 px-4 font-mono text-[11px] text-[#6e84a3]">
-                                                {lead.createdDate || "—"}
-                                            </td>
-
-                                            {/* Channels */}
+                                            {/* Channels (HubSpot, Reply, LinkedHelper, Zoho) */}
                                             <td className="py-3.5 px-4">
                                                 <div className="flex justify-center">
                                                     <ChannelBadges
@@ -680,9 +761,9 @@ export default function CRMPage() {
                 <div className="flex flex-col sm:flex-row items-center justify-between border-t border-[#eaedf3] bg-[#fafbfc] px-4 py-3 gap-3">
                     <div className="flex items-center gap-3 text-xs text-[#6e84a3]">
                         <span>
-                            Showing <strong className="text-[#1f2d3d]">{totalItems > 0 ? startIndex + 1 : 0}</strong> to{" "}
-                            <strong className="text-[#1f2d3d]">{Math.min(startIndex + pageSize, totalItems)}</strong> of{" "}
-                            <strong className="text-[#1f2d3d]">{totalItems}</strong> contacts
+                            Showing <strong className="text-[#1f2d3d]">{totalCount > 0 ? startIndex + 1 : 0}</strong> to{" "}
+                            <strong className="text-[#1f2d3d]">{Math.min(startIndex + pageSize, totalCount)}</strong> of{" "}
+                            <strong className="text-[#1f2d3d]">{totalCount.toLocaleString()}</strong> contacts
                         </span>
 
                         <div className="flex items-center gap-1.5 border-l border-[#eaedf3] pl-3">
@@ -751,6 +832,11 @@ export default function CRMPage() {
                 <LeadDrawer
                     lead={drawerLead}
                     onClose={() => setDrawerLead(null)}
+                    onLeadUpdated={(updatedLead) => {
+                        setLeads((prev) => prev.map((l) => (l.id === updatedLead.id ? updatedLead : l)));
+                        setDrawerLead(updatedLead);
+                        loadLeadsFromDb();
+                    }}
                     onPushToChannel={(channelKey, lead) => {
                         setDrawerLead(null);
                         setChannelModalInfo({ channelKey, leads: [lead] });

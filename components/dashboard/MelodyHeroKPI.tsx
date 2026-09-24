@@ -1,108 +1,111 @@
 "use client";
 
-import { UserPlus, Clock, Download, CheckCircle2, DollarSign, AlertCircle } from "lucide-react";
+import { Users, Building2, Mail, Globe, MessageSquareCheck, ExternalLink } from "lucide-react";
 
 interface HeroWidgetProps {
-    totalLeads: number;
-    avgReplyTime: string;
-    emailsSent: number;
-    deliveredCount: number;
-    pipelineWon: string;
-    pendingReviews: number;
+    totalContacts: number;
+    uniqueCompanies: number;
+    withEmail: number;
+    withLinkedin: number;
+    withDomain: number;
+    withReplied: number;
 }
 
 export function MelodyHeroKPI({
-    totalLeads = 54000,
-    avgReplyTime = "2.4 hrs",
-    emailsSent = 35200,
-    deliveredCount = 7500,
-    pipelineWon = "$184k",
-    pendingReviews = 18,
+    totalContacts = 40142,
+    uniqueCompanies = 17221,
+    withEmail = 21383,
+    withLinkedin = 30365,
+    withDomain = 23747,
+    withReplied = 228,
 }: Partial<HeroWidgetProps>) {
+    const emailPercentage = totalContacts > 0 ? Math.round((withEmail / totalContacts) * 100) : 0;
+    const linkedinPercentage = totalContacts > 0 ? Math.round((withLinkedin / totalContacts) * 100) : 0;
+
     return (
-        <div className="hero-kpi-banner overflow-hidden p-6 text-white">
+        <div className="hero-kpi-banner overflow-hidden p-6 text-white rounded-2xl shadow-lg">
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 divide-y sm:divide-y-0 sm:divide-x divide-white/15">
-                {/* 1. New Leads / Users */}
+                {/* 1. Total Contacts in DB */}
                 <div className="px-3 py-2 sm:py-0 first:pl-0">
                     <div className="flex items-center gap-1.5 text-xs text-[#e2e8f0] font-semibold">
-                        <UserPlus className="h-4 w-4 text-[#84a98c]" />
-                        <span>Sourced Leads</span>
+                        <Users className="h-4 w-4 text-[#84a98c]" />
+                        <span>Total Contacts</span>
                     </div>
                     <div className="mt-2 text-2xl lg:text-3xl font-extrabold tracking-tight text-white font-mono drop-shadow-sm">
-                        {totalLeads.toLocaleString()}
+                        {totalContacts.toLocaleString()}
                     </div>
                     <div className="mt-2 inline-flex items-center rounded-full bg-emerald-500/25 border border-emerald-400/50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-200">
-                        +14.2% increase
+                        Live PostgreSQL DB
                     </div>
                 </div>
 
-                {/* 2. Avg Reply Time */}
+                {/* 2. Unique Companies */}
                 <div className="px-3 py-2 sm:py-0">
                     <div className="flex items-center gap-1.5 text-xs text-[#e2e8f0] font-semibold">
-                        <Clock className="h-4 w-4 text-[#84a98c]" />
-                        <span>Avg Reply Time</span>
+                        <Building2 className="h-4 w-4 text-[#84a98c]" />
+                        <span>Unique Companies</span>
                     </div>
                     <div className="mt-2 text-2xl lg:text-3xl font-extrabold tracking-tight text-white font-mono drop-shadow-sm">
-                        {avgReplyTime}
+                        {uniqueCompanies.toLocaleString()}
                     </div>
                     <div className="mt-2 inline-flex items-center rounded-full bg-emerald-500/25 border border-emerald-400/50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-200">
-                        30% decrease
+                        Distinct Accounts
                     </div>
                 </div>
 
-                {/* 3. Emails Sent / Dispatches */}
+                {/* 3. Verified Emails */}
                 <div className="px-3 py-2 sm:py-0">
                     <div className="flex items-center gap-1.5 text-xs text-[#e2e8f0] font-semibold">
-                        <Download className="h-4 w-4 text-[#84a98c]" />
-                        <span>Sent via Reply</span>
+                        <Mail className="h-4 w-4 text-[#84a98c]" />
+                        <span>Verified Emails</span>
                     </div>
                     <div className="mt-2 text-2xl lg:text-3xl font-extrabold tracking-tight text-white font-mono drop-shadow-sm">
-                        {emailsSent.toLocaleString()}
+                        {withEmail.toLocaleString()}
                     </div>
                     <div className="mt-2 inline-flex items-center rounded-full bg-emerald-500/25 border border-emerald-400/50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-200">
-                        +18% increase
+                        {emailPercentage}% coverage
                     </div>
                 </div>
 
-                {/* 4. Delivered & Active */}
+                {/* 4. LinkedIn Profiles */}
                 <div className="px-3 py-2 sm:py-0">
                     <div className="flex items-center gap-1.5 text-xs text-[#e2e8f0] font-semibold">
-                        <CheckCircle2 className="h-4 w-4 text-[#84a98c]" />
-                        <span>Deliverability</span>
+                        <ExternalLink className="h-4 w-4 text-[#84a98c]" />
+                        <span>LinkedIn Profiles</span>
                     </div>
                     <div className="mt-2 text-2xl lg:text-3xl font-extrabold tracking-tight text-white font-mono drop-shadow-sm">
-                        99.2%
+                        {withLinkedin.toLocaleString()}
                     </div>
                     <div className="mt-2 inline-flex items-center rounded-full bg-emerald-500/25 border border-emerald-400/50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-200">
-                        Top inbox tier
+                        {linkedinPercentage}% of database
                     </div>
                 </div>
 
-                {/* 5. Pipeline / Deals */}
+                {/* 5. Company Domains */}
                 <div className="px-3 py-2 sm:py-0">
                     <div className="flex items-center gap-1.5 text-xs text-[#e2e8f0] font-semibold">
-                        <DollarSign className="h-4 w-4 text-[#84a98c]" />
-                        <span>HubSpot Pipeline</span>
+                        <Globe className="h-4 w-4 text-[#84a98c]" />
+                        <span>Company Domains</span>
                     </div>
                     <div className="mt-2 text-2xl lg:text-3xl font-extrabold tracking-tight text-white font-mono drop-shadow-sm">
-                        {pipelineWon}
+                        {withDomain.toLocaleString()}
                     </div>
                     <div className="mt-2 inline-flex items-center rounded-full bg-emerald-500/25 border border-emerald-400/50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-200">
-                        +24% increase
+                        Enriched Domains
                     </div>
                 </div>
 
-                {/* 6. Pending / Tasks */}
-                <div className="px-3 py-2 sm:py-0 last:pr-0">
+                {/* 6. Engaged / Replied */}
+                <div className="px-3 py-2 sm:py-0">
                     <div className="flex items-center gap-1.5 text-xs text-[#e2e8f0] font-semibold">
-                        <AlertCircle className="h-4 w-4 text-amber-300" />
-                        <span>Action Required</span>
+                        <MessageSquareCheck className="h-4 w-4 text-[#84a98c]" />
+                        <span>Total Replied</span>
                     </div>
                     <div className="mt-2 text-2xl lg:text-3xl font-extrabold tracking-tight text-white font-mono drop-shadow-sm">
-                        {pendingReviews}
+                        {withReplied.toLocaleString()}
                     </div>
-                    <div className="mt-2 inline-flex items-center rounded-full bg-amber-500/25 border border-amber-400/50 px-2.5 py-0.5 text-[10px] font-bold text-amber-200">
-                        Queue review
+                    <div className="mt-2 inline-flex items-center rounded-full bg-emerald-500/25 border border-emerald-400/50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-200">
+                        Positive Responses
                     </div>
                 </div>
             </div>

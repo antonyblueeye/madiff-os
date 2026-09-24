@@ -7,29 +7,53 @@ export interface LeadChannelStatus {
 
 export interface LeadItem {
     id: string;
+    hubspotId?: string;
     name: string;
     avatarUrl?: string;
     title: string;
     company: string;
-    industry: string;
+    industry?: string;
     location: string;
-    headcount: string;
+    headcount?: string;
     email: string;
     phone?: string;
-    linkedinUrl?: string;
-    stage: "New Sourced" | "Contacted" | "In Conversation" | "Meeting Booked" | "Proposal Sent";
+    leadStatus?: string;
     lifecycleStage?: string;
     contactOwner?: string;
-    createdDate?: string;
+    syncStatus?: "synced" | "pending_push";
+    dirtyFields?: string[];
+    linkedinConnectionStatus?: string;
+    linkedinAccount?: string;
+    websiteUrl?: string;
+    linkedinUrl?: string;
+    replied?: string;
     campaign?: string;
+    emailStatus?: string;
+    technology?: string;
+    role?: string;
+    typeOfResponse?: string;
+    companyDomainName?: string;
+    stage: "New Sourced" | "Contacted" | "In Conversation" | "Meeting Booked" | "Proposal Sent";
+    createdDate?: string;
     channels: {
-        apollo: LeadChannelStatus;
+        apollo?: LeadChannelStatus;
         hubspot: LeadChannelStatus;
         reply: LeadChannelStatus;
         linkedhelper: LeadChannelStatus;
         zoho: LeadChannelStatus;
     };
     notes?: string[];
+    replyConversations?: {
+        id: number | string;
+        type: string;
+        date: string;
+        campaignId?: number | string;
+        campaignName?: string;
+        stepNum?: number | string;
+        subject?: string;
+        body?: string;
+        senderEmail?: string;
+    }[];
     timeline: { date: string; channel: string; event: string }[];
 }
 
