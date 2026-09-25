@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 
 const variants = {
     default: "bg-[#f1f4f8] text-[#52796f] border-[#e2e8f0]",
+    neutral: "bg-[#f1f4f8] text-[#52796f] border-[#e2e8f0]",
     success: "bg-emerald-50 text-emerald-700 border-emerald-200",
     warning: "bg-amber-50 text-amber-700 border-amber-200",
     danger: "bg-rose-50 text-rose-700 border-rose-200",

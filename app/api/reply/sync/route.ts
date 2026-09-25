@@ -129,7 +129,7 @@ export async function POST(request: Request) {
                     [contactEmail]
                 );
 
-                if (leadRes.rowCount > 0) {
+                if ((leadRes.rowCount ?? 0) > 0) {
                     // Update existing lead
                     const currentLead = leadRes.rows[0];
                     const newChannels = {

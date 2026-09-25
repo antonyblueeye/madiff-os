@@ -186,7 +186,7 @@ export default function IntegrationsPage() {
             description: "Automated LinkedIn connection invitations, profile visits & smart outreach sequences.",
             category: "LinkedIn Automation",
             isConfigured: true,
-            status: "active",
+            status: "configured",
             authMethod: "Inbound Webhook Listener (Live)",
             notes: [
                 "Webhook endpoint active at `/api/webhooks/linkedhelper`.",

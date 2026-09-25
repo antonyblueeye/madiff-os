@@ -8,6 +8,7 @@ export function PagePlaceholder({
     icon: Icon,
     tag = "Madiff System",
     action,
+    actions,
     children,
 }: {
     title: string;
@@ -15,8 +16,10 @@ export function PagePlaceholder({
     icon: LucideIcon;
     tag?: string;
     action?: React.ReactNode;
+    actions?: React.ReactNode;
     children?: React.ReactNode;
 }) {
+    const actionEl = action || actions;
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
             {/* Clean Header */}
@@ -37,7 +40,7 @@ export function PagePlaceholder({
                 </div>
 
                 <div className="flex items-center gap-2.5 self-start sm:self-auto">
-                    {action}
+                    {actionEl}
                     <Link
                         href="/"
                         className="inline-flex items-center justify-center rounded-lg border border-[#e2e8f0] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#475569] hover:bg-[#f8fafc] hover:text-[#1e293b] transition-all"

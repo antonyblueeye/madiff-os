@@ -6,7 +6,7 @@ import { LeadItem } from "@/lib/mock-data";
 import { Send, CheckCircle2, X, PlusCircle, List, Mail, AlertCircle, RefreshCw } from "lucide-react";
 
 interface ChannelPushModalProps {
-    channelKey: "hubspot" | "reply" | "linkedhelper" | "zoho";
+    channelKey: "apollo" | "hubspot" | "reply" | "linkedhelper" | "zoho";
     leads: LeadItem[]; // 1 lead for single click, or multiple for bulk
     onClose: () => void;
     onSuccess: (channelKey: string, leadIds: string[], details: string) => void;

@@ -84,7 +84,7 @@ export default function CRMPage() {
     const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
     const [drawerLead, setDrawerLead] = useState<LeadItem | null>(null);
     const [channelModalInfo, setChannelModalInfo] = useState<{
-        channelKey: "hubspot" | "reply" | "linkedhelper" | "zoho";
+        channelKey: "apollo" | "hubspot" | "reply" | "linkedhelper" | "zoho";
         leads: LeadItem[];
     } | null>(null);
     const [isApolloImportOpen, setIsApolloImportOpen] = useState(false);
