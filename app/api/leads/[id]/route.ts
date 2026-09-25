@@ -31,6 +31,8 @@ export async function PATCH(
             leadStatus: "lead_status",
             lifecycleStage: "lifecycle_stage",
             contactOwner: "contact_owner",
+            linkedinConnectionStatus: "linkedin_connection_status",
+            linkedinAccount: "linkedin_account",
             location: "location",
             websiteUrl: "website_url",
             linkedinUrl: "linkedin_url",

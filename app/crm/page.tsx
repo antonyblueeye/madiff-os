@@ -27,7 +27,17 @@ import {
     ExternalLink,
     Database,
     Globe,
+    Edit3,
+    Filter,
+    Calendar,
+    Check,
+    FileSpreadsheet,
+    Upload,
+    Download,
+    ChevronDown,
 } from "lucide-react";
+import { BulkEditModal } from "@/components/crm/BulkEditModal";
+import { CsvImportModal } from "@/components/crm/CsvImportModal";
 
 const ITEMS_PER_PAGE_OPTIONS = [15, 25, 50, 100];
 
@@ -43,16 +53,26 @@ export default function CRMPage() {
     const [filterName, setFilterName] = useState("");
     const [filterEmail, setFilterEmail] = useState("");
     const [filterCompany, setFilterCompany] = useState("");
+    const [filterTitle, setFilterTitle] = useState("");
+    const [filterLocation, setFilterLocation] = useState("");
     const [filterOwner, setFilterOwner] = useState("All");
     const [filterLifecycleStage, setFilterLifecycleStage] = useState("All");
+    const [filterLeadStatus, setFilterLeadStatus] = useState("All");
     const [filterCampaign, setFilterCampaign] = useState("All");
     const [filterChannel, setFilterChannel] = useState("All");
+    const [filterConnectionStatus, setFilterConnectionStatus] = useState("All");
+    const [filterReplied, setFilterReplied] = useState("All");
     const [filterDateFrom, setFilterDateFrom] = useState("");
     const [filterDateTo, setFilterDateTo] = useState("");
+
+    // Toggle for filter drawer / collapsible panel
+    const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 
     // Dynamic dropdown filter options from DB
     const [availableOwners, setAvailableOwners] = useState<string[]>([]);
     const [availableStages, setAvailableStages] = useState<string[]>([]);
+    const [availableLeadStatuses, setAvailableLeadStatuses] = useState<string[]>([]);
+    const [availableConnectionStatuses, setAvailableConnectionStatuses] = useState<string[]>([]);
     const [availableCampaigns, setAvailableCampaigns] = useState<string[]>([]);
 
     // Pagination state
@@ -61,15 +81,57 @@ export default function CRMPage() {
 
     // Selection & Modals
     const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+    const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
     const [drawerLead, setDrawerLead] = useState<LeadItem | null>(null);
     const [channelModalInfo, setChannelModalInfo] = useState<{
         channelKey: "hubspot" | "reply" | "linkedhelper" | "zoho";
         leads: LeadItem[];
     } | null>(null);
     const [isApolloImportOpen, setIsApolloImportOpen] = useState(false);
+    const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
+    const [isSyncMenuOpen, setIsSyncMenuOpen] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const [notification, setNotification] = useState<string | null>(null);
     const [pendingPushCount, setPendingPushCount] = useState(0);
     const [isPushingPending, setIsPushingPending] = useState(false);
+
+    // Export currently filtered leads to CSV
+    const handleExportCsv = async () => {
+        setIsExporting(true);
+        try {
+            const params = new URLSearchParams();
+            if (searchQuery) params.set("search", searchQuery);
+            if (filterName) params.set("name", filterName);
+            if (filterEmail) params.set("email", filterEmail);
+            if (filterCompany) params.set("company", filterCompany);
+            if (filterTitle) params.set("title", filterTitle);
+            if (filterLocation) params.set("location", filterLocation);
+            if (filterOwner && filterOwner !== "All") params.set("owner", filterOwner);
+            if (filterLifecycleStage && filterLifecycleStage !== "All") params.set("lifecycleStage", filterLifecycleStage);
+            if (filterLeadStatus && filterLeadStatus !== "All") params.set("leadStatus", filterLeadStatus);
+            if (filterCampaign && filterCampaign !== "All") params.set("campaign", filterCampaign);
+            if (filterChannel && filterChannel !== "All") params.set("channel", filterChannel);
+            if (filterConnectionStatus && filterConnectionStatus !== "All") params.set("connectionStatus", filterConnectionStatus);
+            if (filterReplied && filterReplied !== "All") params.set("replied", filterReplied);
+            if (filterDateFrom) params.set("dateFrom", filterDateFrom);
+            if (filterDateTo) params.set("dateTo", filterDateTo);
+
+            const exportUrl = `/api/leads/export-csv?${params.toString()}`;
+            const link = document.createElement("a");
+            link.href = exportUrl;
+            link.setAttribute("download", `crm_leads_export_${new Date().toISOString().split("T")[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            setNotification(`Export started! Downloading filtered contacts to CSV...`);
+            setTimeout(() => setNotification(null), 4000);
+        } catch (err: any) {
+            setNotification(`Export failed: ${err.message}`);
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     // Fetch leads from our PostgreSQL database
     const loadLeadsFromDb = useCallback(async () => {
@@ -84,10 +146,15 @@ export default function CRMPage() {
             if (filterName) params.set("name", filterName);
             if (filterEmail) params.set("email", filterEmail);
             if (filterCompany) params.set("company", filterCompany);
+            if (filterTitle) params.set("title", filterTitle);
+            if (filterLocation) params.set("location", filterLocation);
             if (filterOwner && filterOwner !== "All") params.set("owner", filterOwner);
             if (filterLifecycleStage && filterLifecycleStage !== "All") params.set("lifecycleStage", filterLifecycleStage);
+            if (filterLeadStatus && filterLeadStatus !== "All") params.set("leadStatus", filterLeadStatus);
             if (filterCampaign && filterCampaign !== "All") params.set("campaign", filterCampaign);
             if (filterChannel && filterChannel !== "All") params.set("channel", filterChannel);
+            if (filterConnectionStatus && filterConnectionStatus !== "All") params.set("connectionStatus", filterConnectionStatus);
+            if (filterReplied && filterReplied !== "All") params.set("replied", filterReplied);
             if (filterDateFrom) params.set("dateFrom", filterDateFrom);
             if (filterDateTo) params.set("dateTo", filterDateTo);
 
@@ -101,6 +168,8 @@ export default function CRMPage() {
                 setPendingPushCount(data.pendingPushCount || 0);
                 if (data.availableOwners) setAvailableOwners(data.availableOwners);
                 if (data.availableStages) setAvailableStages(data.availableStages);
+                if (data.availableLeadStatuses) setAvailableLeadStatuses(data.availableLeadStatuses);
+                if (data.availableConnectionStatuses) setAvailableConnectionStatuses(data.availableConnectionStatuses);
                 if (data.availableCampaigns) setAvailableCampaigns(data.availableCampaigns);
             } else {
                 setNotification(data.error || "Failed to load leads from database");
@@ -117,10 +186,15 @@ export default function CRMPage() {
         filterName,
         filterEmail,
         filterCompany,
+        filterTitle,
+        filterLocation,
         filterOwner,
         filterLifecycleStage,
+        filterLeadStatus,
         filterCampaign,
         filterChannel,
+        filterConnectionStatus,
+        filterReplied,
         filterDateFrom,
         filterDateTo,
     ]);
@@ -215,28 +289,40 @@ export default function CRMPage() {
         }
     };
 
-    const hasActiveFilters = Boolean(
-        searchQuery ||
-        filterName ||
-        filterEmail ||
-        filterCompany ||
-        filterOwner !== "All" ||
-        filterLifecycleStage !== "All" ||
-        filterCampaign !== "All" ||
-        filterChannel !== "All" ||
-        filterDateFrom ||
-        filterDateTo
-    );
+    const activeFilterCount = [
+        searchQuery,
+        filterName,
+        filterEmail,
+        filterCompany,
+        filterTitle,
+        filterLocation,
+        filterOwner !== "All" ? filterOwner : null,
+        filterLifecycleStage !== "All" ? filterLifecycleStage : null,
+        filterLeadStatus !== "All" ? filterLeadStatus : null,
+        filterCampaign !== "All" ? filterCampaign : null,
+        filterChannel !== "All" ? filterChannel : null,
+        filterConnectionStatus !== "All" ? filterConnectionStatus : null,
+        filterReplied !== "All" ? filterReplied : null,
+        filterDateFrom,
+        filterDateTo,
+    ].filter(Boolean).length;
+
+    const hasActiveFilters = activeFilterCount > 0;
 
     const resetFilters = () => {
         setSearchQuery("");
         setFilterName("");
         setFilterEmail("");
         setFilterCompany("");
+        setFilterTitle("");
+        setFilterLocation("");
         setFilterOwner("All");
         setFilterLifecycleStage("All");
+        setFilterLeadStatus("All");
         setFilterCampaign("All");
         setFilterChannel("All");
+        setFilterConnectionStatus("All");
+        setFilterReplied("All");
         setFilterDateFrom("");
         setFilterDateTo("");
         setCurrentPage(1);
@@ -265,13 +351,14 @@ export default function CRMPage() {
         channelKey: "hubspot" | "reply" | "linkedhelper",
         lead: LeadItem
     ) => {
+        if (channelKey === "linkedhelper") return; // Inbound only via webhook
         setChannelModalInfo({
-            channelKey,
+            channelKey: channelKey as "hubspot" | "reply",
             leads: [lead],
         });
     };
 
-    const handleBulkPush = (channelKey: "hubspot" | "reply" | "linkedhelper") => {
+    const handleBulkPush = (channelKey: "hubspot" | "reply") => {
         const selectedList = leads.filter((l) => selectedLeadIds.includes(l.id));
         if (selectedList.length === 0) return;
         setChannelModalInfo({
@@ -313,11 +400,11 @@ export default function CRMPage() {
         setTimeout(() => setNotification(null), 5000);
     };
 
-    const handleApolloImportSuccess = () => {
+    const handleApolloImportSuccess = (count?: number, message?: string) => {
         setIsApolloImportOpen(false);
         loadLeadsFromDb();
-        setNotification(`Imported contacts from Apollo.io into CRM!`);
-        setTimeout(() => setNotification(null), 4000);
+        setNotification(message || `Imported ${count || "new"} contacts from Apollo.io into CRM!`);
+        setTimeout(() => setNotification(null), 5000);
     };
 
     const startIndex = (currentPage - 1) * pageSize;
@@ -344,43 +431,117 @@ export default function CRMPage() {
                         </button>
                     )}
 
-                    <div className="flex items-center rounded-lg border border-[#eaedf3] bg-white shadow-sm overflow-hidden">
+                    {/* Sync Integrations Dropdown Menu */}
+                    <div className="relative">
                         <button
-                            onClick={() => syncHubSpotToDb(false)}
-                            disabled={isSyncing}
-                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#354f52] hover:bg-[#f8fafc] transition-colors disabled:opacity-50"
-                            title="Quick Incremental Sync: Updates only contacts modified since last sync"
+                            onClick={() => setIsSyncMenuOpen((prev) => !prev)}
+                            className="flex items-center gap-1.5 rounded-lg border border-[#eaedf3] bg-white px-3 py-2 text-xs font-bold text-[#354f52] shadow-xs hover:bg-[#f8fafc] transition-colors"
+                            title="Synchronize data from connected channels"
                         >
-                            <RefreshCw className={`h-3.5 w-3.5 text-[#354f52] ${isSyncing ? "animate-spin" : ""}`} />
-                            {isSyncing ? "Syncing..." : "Quick Sync"}
+                            <RefreshCw className={`h-3.5 w-3.5 text-[#354f52] ${isSyncing || isSyncingReply ? "animate-spin" : ""}`} />
+                            <span>
+                                {isSyncing
+                                    ? "Syncing HubSpot..."
+                                    : isSyncingReply
+                                    ? "Syncing Reply..."
+                                    : "Sync Gateways"}
+                            </span>
+                            <ChevronDown className="h-3.5 w-3.5 text-[#6e84a3]" />
+                        </button>
+
+                        {isSyncMenuOpen && (
+                            <>
+                                <div
+                                    className="fixed inset-0 z-20"
+                                    onClick={() => setIsSyncMenuOpen(false)}
+                                />
+                                <div className="absolute right-0 top-full mt-1.5 z-30 w-72 rounded-xl border border-[#eaedf3] bg-white p-2 shadow-xl space-y-1 animate-in fade-in">
+                                    <div className="px-2 py-1 text-[10px] font-bold uppercase text-[#6e84a3]">
+                                        HubSpot CRM (Bi-directional)
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setIsSyncMenuOpen(false);
+                                            syncHubSpotToDb(false);
+                                        }}
+                                        disabled={isSyncing}
+                                        className="w-full flex items-start gap-2.5 rounded-lg p-2 text-left hover:bg-[#f8fafc] transition-colors disabled:opacity-50"
+                                    >
+                                        <RefreshCw className="h-4 w-4 text-[#354f52] mt-0.5 shrink-0" />
+                                        <div>
+                                            <div className="text-xs font-bold text-[#1f2d3d]">Quick Incremental Sync</div>
+                                            <div className="text-[11px] text-[#6e84a3]">Updates contacts modified in HubSpot since last check</div>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setIsSyncMenuOpen(false);
+                                            syncHubSpotToDb(true);
+                                        }}
+                                        disabled={isSyncing}
+                                        className="w-full flex items-start gap-2.5 rounded-lg p-2 text-left hover:bg-[#f8fafc] transition-colors disabled:opacity-50"
+                                    >
+                                        <Database className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                                        <div>
+                                            <div className="text-xs font-bold text-[#1f2d3d]">Full HubSpot Resync</div>
+                                            <div className="text-[11px] text-[#6e84a3]">Downloads all 40,000+ contacts from scratch</div>
+                                        </div>
+                                    </button>
+
+                                    <div className="h-px bg-[#eaedf3] my-1" />
+
+                                    <div className="px-2 py-1 text-[10px] font-bold uppercase text-[#6e84a3]">
+                                        Reply.io Outreach
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setIsSyncMenuOpen(false);
+                                            syncReplyToDb();
+                                        }}
+                                        disabled={isSyncingReply}
+                                        className="w-full flex items-start gap-2.5 rounded-lg p-2 text-left hover:bg-[#f8fafc] transition-colors disabled:opacity-50"
+                                    >
+                                        <RefreshCw className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                                        <div>
+                                            <div className="text-xs font-bold text-[#1f2d3d]">Sync Reply.io Inboxes</div>
+                                            <div className="text-[11px] text-[#6e84a3]">Pulls campaigns, email threads & reply events</div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    {/* CSV Actions Group (Import + Export) */}
+                    <div className="flex items-center rounded-lg border border-[#eaedf3] bg-white shadow-xs overflow-hidden">
+                        <button
+                            onClick={() => setIsCsvImportOpen(true)}
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#354f52] hover:bg-[#f8fafc] transition-colors"
+                            title="Upload a CSV file and map columns to CRM fields"
+                        >
+                            <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>Import CSV</span>
                         </button>
                         <span className="h-4 w-px bg-[#eaedf3]" />
                         <button
-                            onClick={() => syncHubSpotToDb(true)}
-                            disabled={isSyncing}
-                            className="px-2.5 py-2 text-[10px] font-bold text-[#6e84a3] hover:text-[#1f2d3d] hover:bg-[#f8fafc] transition-colors disabled:opacity-50"
-                            title="Full Sync: Download all 40,000+ contacts from scratch"
+                            onClick={handleExportCsv}
+                            disabled={isExporting || totalCount === 0}
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#354f52] hover:bg-[#f8fafc] transition-colors disabled:opacity-50"
+                            title={`Export currently filtered contacts (${totalCount.toLocaleString()} leads) to CSV`}
                         >
-                            Full Sync
+                            <Download className={`h-3.5 w-3.5 text-[#354f52] ${isExporting ? "animate-bounce" : ""}`} />
+                            <span>{isExporting ? "Exporting..." : "Export CSV"}</span>
                         </button>
                     </div>
 
-                    {/* Reply.io Sync Button */}
-                    <button
-                        onClick={syncReplyToDb}
-                        disabled={isSyncingReply}
-                        className="flex items-center gap-1.5 rounded-lg border border-[#eaedf3] bg-white px-3 py-2 text-xs font-bold text-[#354f52] shadow-xs hover:bg-[#f8fafc] transition-colors disabled:opacity-50"
-                        title="Sync Reply.io campaigns, activities, messages and replies into PostgreSQL"
-                    >
-                        <RefreshCw className={`h-3.5 w-3.5 text-emerald-600 ${isSyncingReply ? "animate-spin" : ""}`} />
-                        {isSyncingReply ? "Syncing Reply..." : "Sync Reply.io"}
-                    </button>
-
+                    {/* Apollo Sourcing */}
                     <button
                         onClick={() => setIsApolloImportOpen(true)}
-                        className="flex items-center gap-1.5 rounded-lg bg-[#354f52] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#2f3e46] transition-colors"
+                        className="flex items-center gap-1.5 rounded-lg bg-[#354f52] px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#2f3e46] transition-colors"
+                        title="Search and import verified B2B decision makers via Apollo API"
                     >
-                        <Plus className="h-4 w-4" /> Import from Apollo
+                        <Plus className="h-4 w-4" />
+                        <span>Import from Apollo</span>
                     </button>
                 </div>
             }
@@ -427,156 +588,356 @@ export default function CRMPage() {
                         )}
                     </div>
 
-                    {/* Bulk Dispatch Trigger */}
+                    {/* Bulk Action Buttons (Bulk Edit + Bulk Push) */}
                     {selectedLeadIds.length > 0 && (
-                        <div className="flex items-center gap-2 bg-[#f8fafc] border border-[#eaedf3] px-3 py-1.5 rounded-lg shadow-xs animate-in fade-in">
+                        <div className="flex flex-wrap items-center gap-2 bg-[#f8fafc] border border-[#eaedf3] px-3.5 py-1.5 rounded-xl shadow-xs animate-in fade-in">
                             <span className="text-xs font-bold text-[#1f2d3d]">
                                 {selectedLeadIds.length} Selected
                             </span>
                             <span className="text-[#eaedf3]">|</span>
+
+                            {/* Bulk Edit Button */}
+                            <button
+                                onClick={() => setIsBulkEditOpen(true)}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-[#354f52] px-3 py-1 text-xs font-bold text-white hover:bg-[#2f3e46] transition-colors shadow-xs"
+                            >
+                                <Edit3 className="h-3.5 w-3.5" />
+                                <span>Bulk Edit Properties</span>
+                            </button>
+
+                            <span className="text-[#eaedf3]">|</span>
+
                             <div className="flex items-center gap-1.5">
                                 <span className="text-[11px] text-[#6e84a3]">Push bulk:</span>
                                 <button
                                     onClick={() => handleBulkPush("reply")}
-                                    className="rounded bg-white px-2 py-0.5 text-[11px] font-bold text-[#354f52] border border-[#eaedf3] hover:bg-[#354f52] hover:text-white"
+                                    className="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-[#354f52] border border-[#eaedf3] hover:bg-[#354f52] hover:text-white transition-colors"
                                 >
                                     Reply.io
                                 </button>
                                 <button
                                     onClick={() => handleBulkPush("hubspot")}
-                                    className="rounded bg-white px-2 py-0.5 text-[11px] font-bold text-[#354f52] border border-[#eaedf3] hover:bg-[#354f52] hover:text-white"
+                                    className="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-[#354f52] border border-[#eaedf3] hover:bg-[#354f52] hover:text-white transition-colors"
                                 >
                                     HubSpot
-                                </button>
-                                <button
-                                    onClick={() => handleBulkPush("linkedhelper")}
-                                    className="rounded bg-white px-2 py-0.5 text-[11px] font-bold text-[#354f52] border border-[#eaedf3] hover:bg-[#354f52] hover:text-white"
-                                >
-                                    LinkedHelper
                                 </button>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Specific Granular Filter Fields Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 pt-2 border-t border-[#f1f4f8] text-xs">
-                    {/* Name Filter */}
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Name</label>
-                        <input
-                            value={filterName}
-                            onChange={(e) => {
-                                setFilterName(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            placeholder="Filter name..."
-                            className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2.5 py-1.5 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52] focus:bg-white"
-                        />
-                    </div>
-
-                    {/* Email Filter */}
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Email</label>
-                        <input
-                            value={filterEmail}
-                            onChange={(e) => {
-                                setFilterEmail(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            placeholder="Filter email..."
-                            className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2.5 py-1.5 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52] focus:bg-white"
-                        />
-                    </div>
-
-                    {/* Company Filter */}
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Company</label>
-                        <input
-                            value={filterCompany}
-                            onChange={(e) => {
-                                setFilterCompany(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            placeholder="Filter company..."
-                            className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2.5 py-1.5 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52] focus:bg-white"
-                        />
-                    </div>
-
-                    {/* Contact Owner Filter */}
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Contact Owner</label>
-                        <select
-                            value={filterOwner}
-                            onChange={(e) => {
-                                setFilterOwner(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2 py-1.5 text-xs text-[#1f2d3d] outline-none cursor-pointer focus:border-[#354f52] focus:bg-white"
+                {/* Filter Trigger & Reset Controls */}
+                <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-[#f1f4f8]">
+                    <div className="flex items-center gap-2">
+                        {/* Toggle Advanced Filters Button */}
+                        <button
+                            onClick={() => setIsFilterPanelOpen((prev) => !prev)}
+                            className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+                                isFilterPanelOpen || hasActiveFilters
+                                    ? "bg-[#354f52] text-white shadow-xs"
+                                    : "border border-[#eaedf3] bg-white text-[#1f2d3d] hover:bg-[#f8fafc]"
+                            }`}
                         >
-                            <option value="All">All Owners</option>
-                            {availableOwners.map((owner) => (
-                                <option key={owner} value={owner}>
-                                    {owner}
-                                </option>
-                            ))}
-                        </select>
+                            <Filter className="h-3.5 w-3.5" />
+                            <span>Filters</span>
+                            {activeFilterCount > 0 && (
+                                <span className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono font-bold ${
+                                    isFilterPanelOpen || hasActiveFilters ? "bg-white text-[#354f52]" : "bg-[#354f52] text-white"
+                                }`}>
+                                    {activeFilterCount}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Reset Filters Button */}
+                        {hasActiveFilters && (
+                            <button
+                                onClick={resetFilters}
+                                className="flex items-center gap-1 text-[11px] font-bold text-[#e63946] hover:text-red-700 bg-red-50 border border-red-200 px-3 py-1.5 rounded-xl transition-colors"
+                            >
+                                <X className="h-3 w-3" /> Clear All Filters
+                            </button>
+                        )}
                     </div>
 
-                    {/* Lifecycle Stage Filter */}
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Lifecycle Stage</label>
-                        <select
-                            value={filterLifecycleStage}
-                            onChange={(e) => {
-                                setFilterLifecycleStage(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2 py-1.5 text-xs text-[#1f2d3d] outline-none cursor-pointer focus:border-[#354f52] focus:bg-white capitalize"
-                        >
-                            <option value="All">All Stages</option>
-                            {availableStages.map((stage) => (
-                                <option key={stage} value={stage}>
-                                    {stage}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Campaign Filter */}
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Campaign</label>
-                        <select
-                            value={filterCampaign}
-                            onChange={(e) => {
-                                setFilterCampaign(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2 py-1.5 text-xs text-[#1f2d3d] outline-none cursor-pointer focus:border-[#354f52] focus:bg-white"
-                        >
-                            <option value="All">All Campaigns</option>
-                            {availableCampaigns.map((camp) => (
-                                <option key={camp} value={camp}>
-                                    {camp}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Created Date Filter (From) */}
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Created Date (From)</label>
-                        <input
-                            type="date"
-                            value={filterDateFrom}
-                            onChange={(e) => {
-                                setFilterDateFrom(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="w-full rounded-md border border-[#eaedf3] bg-[#f8fafc] px-2 py-1 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52] focus:bg-white"
-                        />
-                    </div>
+                    <span className="text-xs text-[#95aac9] font-medium">
+                        Showing <strong>{totalCount > 0 ? (currentPage - 1) * pageSize + 1 : 0}</strong>–
+                        <strong>{Math.min(currentPage * pageSize, totalCount)}</strong> of <strong>{totalCount.toLocaleString()}</strong> results
+                    </span>
                 </div>
+
+                {/* Expandable Comprehensive Filter Panel */}
+                {isFilterPanelOpen && (
+                    <div className="rounded-xl border border-[#eaedf3] bg-[#fafbfc] p-4.5 space-y-4 animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center justify-between border-b border-[#eaedf3] pb-2">
+                            <span className="text-xs font-extrabold uppercase tracking-wider text-[#1f2d3d] flex items-center gap-2">
+                                <Filter className="h-3.5 w-3.5 text-[#354f52]" />
+                                <span>Filter Contacts by Field</span>
+                            </span>
+                            <button
+                                onClick={() => setIsFilterPanelOpen(false)}
+                                className="text-xs font-semibold text-[#6e84a3] hover:text-[#1f2d3d]"
+                            >
+                                Close Panel ✕
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
+                            {/* 1. Name */}
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Full Name</label>
+                                <input
+                                    value={filterName}
+                                    onChange={(e) => {
+                                        setFilterName(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    placeholder="Filter by name..."
+                                    className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52]"
+                                />
+                            </div>
+
+                            {/* 2. Email */}
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Email Address</label>
+                                <input
+                                    value={filterEmail}
+                                    onChange={(e) => {
+                                        setFilterEmail(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    placeholder="Filter by email..."
+                                    className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52]"
+                                />
+                            </div>
+
+                            {/* 3. Company */}
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Company</label>
+                                <input
+                                    value={filterCompany}
+                                    onChange={(e) => {
+                                        setFilterCompany(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    placeholder="Filter by company..."
+                                    className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52]"
+                                />
+                            </div>
+
+                            {/* 4. Title */}
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Job Title</label>
+                                <input
+                                    value={filterTitle}
+                                    onChange={(e) => {
+                                        setFilterTitle(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    placeholder="e.g. CTO, Founder, VP..."
+                                    className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52]"
+                                />
+                            </div>
+
+                            {/* 5. Location */}
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Location / City</label>
+                                <input
+                                    value={filterLocation}
+                                    onChange={(e) => {
+                                        setFilterLocation(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    placeholder="e.g. London, Austin, Warsaw..."
+                                    className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52]"
+                                />
+                            </div>
+
+                            {/* 6. Contact Owner */}
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Contact Owner</label>
+                                <select
+                                    value={filterOwner}
+                                    onChange={(e) => {
+                                        setFilterOwner(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none cursor-pointer focus:border-[#354f52]"
+                                >
+                                    <option value="All">All Owners</option>
+                                    {availableOwners.map((owner) => (
+                                        <option key={owner} value={owner}>
+                                            {owner}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* 7. Campaign */}
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Campaign / Sequence</label>
+                                <select
+                                    value={filterCampaign}
+                                    onChange={(e) => {
+                                        setFilterCampaign(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none cursor-pointer focus:border-[#354f52]"
+                                >
+                                    <option value="All">All Campaigns</option>
+                                    {availableCampaigns.map((camp) => (
+                                        <option key={camp} value={camp}>
+                                            {camp}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* 8. Lifecycle Stage */}
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Lifecycle Stage</label>
+                                <select
+                                    value={filterLifecycleStage}
+                                    onChange={(e) => {
+                                        setFilterLifecycleStage(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none cursor-pointer focus:border-[#354f52] capitalize"
+                                >
+                                    <option value="All">All Stages</option>
+                                    {availableStages.map((stage) => (
+                                        <option key={stage} value={stage}>
+                                            {stage}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* 9. Lead Status */}
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Lead Status</label>
+                                <select
+                                    value={filterLeadStatus}
+                                    onChange={(e) => {
+                                        setFilterLeadStatus(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none cursor-pointer focus:border-[#354f52]"
+                                >
+                                    <option value="All">All Lead Statuses</option>
+                                    {availableLeadStatuses.map((st) => (
+                                        <option key={st} value={st}>
+                                            {st}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* 10. LinkedIn Connection */}
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-[#6e84a3]">LinkedIn Connection</label>
+                                <select
+                                    value={filterConnectionStatus}
+                                    onChange={(e) => {
+                                        setFilterConnectionStatus(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none cursor-pointer focus:border-[#354f52]"
+                                >
+                                    <option value="All">All Connection Statuses</option>
+                                    <option value="CONNECTED">CONNECTED (1st Degree)</option>
+                                    <option value="PENDING">PENDING</option>
+                                    <option value="Not Connected">Not Connected</option>
+                                </select>
+                            </div>
+
+                            {/* 11. Replied Status */}
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Replied to Outreach</label>
+                                <select
+                                    value={filterReplied}
+                                    onChange={(e) => {
+                                        setFilterReplied(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none cursor-pointer focus:border-[#354f52]"
+                                >
+                                    <option value="All">All (Replied & Not)</option>
+                                    <option value="yes">Replied (Yes)</option>
+                                    <option value="no">Not Replied (No)</option>
+                                </select>
+                            </div>
+
+                            {/* 12. Channel filter */}
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-[#6e84a3]">Active Channel</label>
+                                <select
+                                    value={filterChannel}
+                                    onChange={(e) => {
+                                        setFilterChannel(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none cursor-pointer focus:border-[#354f52]"
+                                >
+                                    <option value="All">All Channels</option>
+                                    <option value="apollo">Apollo.io (Imported Sourced)</option>
+                                    <option value="hubspot">HubSpot CRM Active</option>
+                                    <option value="reply">Reply.io Enrolled</option>
+                                    <option value="linkedhelper">LinkedHelper Active</option>
+                                    <option value="zoho">Zoho Campaigns Subscribed</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Date Range Section: Created Date From - To */}
+                        <div className="border-t border-[#eaedf3] pt-3.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6e84a3] block mb-2 flex items-center gap-1.5">
+                                <Calendar className="h-3 w-3 text-[#354f52]" />
+                                <span>Created Date Range (From – To)</span>
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-semibold text-[#6e84a3]">From Date</label>
+                                    <input
+                                        type="date"
+                                        value={filterDateFrom}
+                                        onChange={(e) => {
+                                            setFilterDateFrom(e.target.value);
+                                            setCurrentPage(1);
+                                        }}
+                                        className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52]"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-semibold text-[#6e84a3]">To Date</label>
+                                    <input
+                                        type="date"
+                                        value={filterDateTo}
+                                        onChange={(e) => {
+                                            setFilterDateTo(e.target.value);
+                                            setCurrentPage(1);
+                                        }}
+                                        className="w-full rounded-lg border border-[#eaedf3] bg-white px-3 py-1.5 text-xs text-[#1f2d3d] outline-none focus:border-[#354f52]"
+                                    />
+                                </div>
+                                <div className="flex items-end">
+                                    {(filterDateFrom || filterDateTo) && (
+                                        <button
+                                            onClick={() => {
+                                                setFilterDateFrom("");
+                                                setFilterDateTo("");
+                                                setCurrentPage(1);
+                                            }}
+                                            className="text-[11px] font-bold text-rose-600 hover:underline py-2"
+                                        >
+                                            Reset Date Range
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Leads Table: Contact | Title | Company | LinkedIn | Lifecycle Stage | Contact Owner */}
@@ -859,6 +1220,40 @@ export default function CRMPage() {
                 <ApolloImportModal
                     onClose={() => setIsApolloImportOpen(false)}
                     onImportSuccess={handleApolloImportSuccess}
+                />
+            )}
+
+            {/* Modal for importing leads from CSV */}
+            {isCsvImportOpen && (
+                <CsvImportModal
+                    availableCampaigns={availableCampaigns}
+                    availableOwners={availableOwners}
+                    onClose={() => setIsCsvImportOpen(false)}
+                    onImportSuccess={(count, msg) => {
+                        setIsCsvImportOpen(false);
+                        setNotification(msg);
+                        loadLeadsFromDb();
+                        setTimeout(() => setNotification(null), 5000);
+                    }}
+                />
+            )}
+
+            {/* Modal for bulk editing leads */}
+            {isBulkEditOpen && (
+                <BulkEditModal
+                    selectedLeadIds={selectedLeadIds}
+                    selectedLeads={leads.filter((l) => selectedLeadIds.includes(l.id))}
+                    availableOwners={availableOwners}
+                    availableCampaigns={availableCampaigns}
+                    availableStages={availableStages}
+                    availableLeadStatuses={availableLeadStatuses}
+                    onClose={() => setIsBulkEditOpen(false)}
+                    onSuccess={(count, msg) => {
+                        setNotification(msg);
+                        setSelectedLeadIds([]);
+                        loadLeadsFromDb();
+                        setTimeout(() => setNotification(null), 5000);
+                    }}
                 />
             )}
         </PagePlaceholder>

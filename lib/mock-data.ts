@@ -54,6 +54,14 @@ export interface LeadItem {
         body?: string;
         senderEmail?: string;
     }[];
+    linkedinConversations?: {
+        id?: number | string;
+        sender?: string;
+        recipient?: string;
+        date?: string;
+        text: string;
+        isIncoming?: boolean;
+    }[];
     timeline: { date: string; channel: string; event: string }[];
 }
 
@@ -340,7 +348,7 @@ export const aiCommunitiesList = [
         engagementLevel: "High (Bi-weekly posts)",
         url: "https://linkedin.com",
         recentTopic: "Why specialized pods beat monolithic dev shops",
-        keyContacts: "Lars M., Anton D.",
+        keyContacts: "Lars M., Anton Synieokyi",
     },
     {
         id: "comm-4",

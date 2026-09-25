@@ -22,6 +22,7 @@ import {
     RotateCcw,
     Globe,
     ExternalLink,
+    MessageSquare,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 
@@ -565,6 +566,69 @@ export function LeadDrawer({ lead, onClose, onLeadUpdated, onPushToChannel }: Le
                     )}
                 </div>
 
+                {/* 3.2. LinkedIn (LinkedHelper) Conversation History */}
+                <div className="rounded-xl border border-sky-100 bg-[#f8fafc] p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-sky-500 animate-pulse" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-[#1f2d3d] flex items-center gap-1.5">
+                                <MessageSquare className="h-3.5 w-3.5 text-sky-600" />
+                                <span>LinkedIn Messages & Outreach Flow</span>
+                            </h3>
+                        </div>
+                        {lead.linkedinConversations && lead.linkedinConversations.length > 0 ? (
+                            <Badge variant={lead.replied === "true" || lead.replied === "Yes" ? "success" : "neutral"}>
+                                {lead.linkedinConversations.length} {lead.linkedinConversations.length === 1 ? "Message" : "Messages"}
+                            </Badge>
+                        ) : (
+                            <span className="text-[10px] text-[#95aac9]">No sync recorded</span>
+                        )}
+                    </div>
+
+                    {lead.linkedinConversations && lead.linkedinConversations.length > 0 ? (
+                        <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                            {lead.linkedinConversations.map((msg, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`rounded-lg border p-3 text-xs space-y-1.5 transition-all ${
+                                        msg.isIncoming
+                                            ? "border-emerald-300 bg-emerald-50/80 ml-3"
+                                            : "border-sky-100 bg-white mr-3 shadow-2xs"
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between text-[11px]">
+                                        <span className="font-bold flex items-center gap-1.5">
+                                            <span
+                                                className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                                    msg.isIncoming
+                                                        ? "bg-emerald-600 text-white"
+                                                        : "bg-sky-100 text-sky-800"
+                                                }`}
+                                            >
+                                                {msg.isIncoming ? "Lead Reply" : "Outbound Message"}
+                                            </span>
+                                            <span className="text-[#1f2d3d] truncate max-w-[190px]">
+                                                {msg.sender || (msg.isIncoming ? lead.name : "Team Madiff")}
+                                            </span>
+                                        </span>
+                                        <span className="text-[#95aac9] text-[10px] font-mono">
+                                            {msg.date || ""}
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-1 text-[11.5px] text-[#334155] bg-white/70 p-2.5 rounded border border-[#eaedf3]/80 whitespace-pre-wrap leading-relaxed">
+                                        {msg.text}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="rounded-lg border border-dashed border-[#eaedf3] bg-white p-3 text-center text-xs text-[#95aac9]">
+                            No LinkedIn messaging history captured yet. When LinkedHelper executes sequence actions, messages will automatically appear here.
+                        </div>
+                    )}
+                </div>
+
                 {/* 4. Real-time Gateway Presence (5 Channels) */}
                 <div>
                     <h3 className="text-xs font-bold uppercase tracking-wider text-[#6e84a3] mb-3">
@@ -607,6 +671,10 @@ export function LeadDrawer({ lead, onClose, onLeadUpdated, onPushToChannel }: Le
                                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                                             <span>{status.statusText || "Active"}</span>
                                         </div>
+                                    ) : ch.key === "linkedhelper" ? (
+                                        <span className="text-[10px] font-medium text-[#6e84a3] bg-[#f1f4f8] px-2 py-1 rounded">
+                                            Inbound Webhook
+                                        </span>
                                     ) : (
                                         <button
                                             onClick={() => onPushToChannel(ch.key, lead)}

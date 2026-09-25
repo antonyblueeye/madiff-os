@@ -63,14 +63,55 @@ export async function GET() {
             ORDER BY count DESC;
         `);
 
-        // 6. Channel Presence Breakdown
+        // 6. Real Channel Presence Breakdown (HubSpot, LinkedHelper, Apollo)
         const channelsRes = await pool.query(`
             SELECT
-                count(*) filter (where (channels->'hubspot'->>'active')::boolean = true)::int as hubspot_count,
-                count(*) filter (where (channels->'reply'->>'active')::boolean = true)::int as reply_count,
-                count(*) filter (where (channels->'linkedhelper'->>'active')::boolean = true)::int as linkedhelper_count,
-                count(*) filter (where (channels->'zoho'->>'active')::boolean = true)::int as zoho_count
+                count(*) filter (where hubspot_id is not null or (channels->'hubspot'->>'active')::boolean = true)::int as hubspot_count,
+                count(*) filter (where channels->'linkedhelper'->>'active' = 'true' or id like 'lh_%')::int as linkedhelper_count,
+                count(*) filter (where channels->'apollo'->>'active' = 'true' or id like 'apollo_%' or id like 'ap-%')::int as apollo_count,
+                count(*) filter (where channels->'reply'->>'active' = 'true' or id like 'reply_%')::int as reply_count
             FROM leads;
+        `);
+
+        // 7. Messaging & Reply Analytics
+        const commsRes = await pool.query(`
+            SELECT 
+                coalesce(sum(jsonb_array_length(reply_conversations)), 0)::int as reply_messages_total,
+                coalesce(sum(jsonb_array_length(linkedin_conversations)), 0)::int as linkedin_messages_total,
+                count(*) filter (where replied = 'true' or replied = 'Yes')::int as total_replied_leads,
+                count(*) filter (where id like 'lh_%' or channels->'linkedhelper'->>'active' = 'true')::int as total_linkedin_leads,
+                count(*) filter (where (id like 'lh_%' or channels->'linkedhelper'->>'active' = 'true') and (replied = 'true' or replied = 'Yes'))::int as linkedin_replied_leads,
+                count(*) filter (where id like 'reply_%' or channels->'reply'->>'active' = 'true')::int as total_email_leads,
+                count(*) filter (where (id like 'reply_%' or channels->'reply'->>'active' = 'true') and (replied = 'true' or replied = 'Yes'))::int as email_replied_leads
+            FROM leads;
+        `);
+        const comms = commsRes.rows[0] || {};
+        const totalMessages = (comms.reply_messages_total || 0) + (comms.linkedin_messages_total || 0);
+        const totalOutboundLeads = (comms.total_linkedin_leads || 0) + (comms.total_email_leads || 0);
+        const overallReplyRate = totalOutboundLeads > 0 
+            ? ((comms.total_replied_leads / totalOutboundLeads) * 100).toFixed(1) 
+            : "0.0";
+
+        // 8. Recent Responses / Messages preview (both LinkedIn & Reply.io)
+        const recentResponsesRes = await pool.query(`
+            SELECT 
+                id,
+                contact_name as "name",
+                title,
+                company_name as "company",
+                email,
+                replied,
+                type_of_response as "typeOfResponse",
+                campaign,
+                reply_conversations as "replyConversations",
+                linkedin_conversations as "linkedinConversations",
+                TO_CHAR(updated_at, 'YYYY-MM-DD HH24:MI') as "updatedAt"
+            FROM leads
+            WHERE (replied = 'true' OR replied = 'Yes' 
+                   OR jsonb_array_length(coalesce(reply_conversations, '[]'::jsonb)) > 0 
+                   OR jsonb_array_length(coalesce(linkedin_conversations, '[]'::jsonb)) > 0)
+            ORDER BY updated_at DESC
+            LIMIT 50;
         `);
 
         return NextResponse.json({
@@ -86,7 +127,26 @@ export async function GET() {
             contactsByOwner: ownersRes.rows,
             contactsByCampaign: campaignsRes.rows,
             stages: stagesRes.rows,
-            channels: channelsRes.rows[0] || {},
+            channels: {
+                hubspot_count: channelsRes.rows[0]?.hubspot_count || 0,
+                linkedhelper_count: channelsRes.rows[0]?.linkedhelper_count || 0,
+                apollo_count: channelsRes.rows[0]?.apollo_count || 0,
+                reply_count: channelsRes.rows[0]?.reply_count || 0,
+            },
+            messaging: {
+                totalMessages,
+                replyMessagesTotal: comms.reply_messages_total || 0,
+                linkedinMessagesTotal: comms.linkedin_messages_total || 0,
+                totalRepliedLeads: comms.total_replied_leads || 0,
+                overallReplyRate,
+                linkedinReplyRate: comms.total_linkedin_leads > 0 
+                    ? ((comms.linkedin_replied_leads / comms.total_linkedin_leads) * 100).toFixed(1) 
+                    : "0.0",
+                emailReplyRate: comms.total_email_leads > 0 
+                    ? ((comms.email_replied_leads / comms.total_email_leads) * 100).toFixed(1) 
+                    : "0.0",
+            },
+            recentResponses: recentResponsesRes.rows,
         });
     } catch (err: any) {
         console.error("GET /api/dashboard/stats error:", err);

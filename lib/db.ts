@@ -148,6 +148,7 @@ export async function initDb() {
             );
 
             ALTER TABLE leads ADD COLUMN IF NOT EXISTS reply_conversations JSONB DEFAULT '[]'::jsonb;
+            ALTER TABLE leads ADD COLUMN IF NOT EXISTS linkedin_conversations JSONB DEFAULT '[]'::jsonb;
 
             -- LinkedIn Content Posts Status Table
             CREATE TABLE IF NOT EXISTS content_posts (
@@ -159,6 +160,45 @@ export async function initDb() {
                 notes TEXT,
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             );
+
+            -- LinkedHelper Webhook Events Log Table
+            CREATE TABLE IF NOT EXISTS linkedhelper_events (
+                id SERIAL PRIMARY KEY,
+                event_type VARCHAR(100),
+                campaign_id VARCHAR(100),
+                campaign_name VARCHAR(255),
+                action_name VARCHAR(255),
+                profile_id VARCHAR(100),
+                profile_url TEXT,
+                full_name VARCHAR(255),
+                email VARCHAR(255),
+                phone VARCHAR(100),
+                company VARCHAR(255),
+                occupation VARCHAR(255),
+                raw_payload JSONB NOT NULL,
+                processed_status VARCHAR(50) DEFAULT 'received',
+                lead_id VARCHAR(100),
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_lh_created_at ON linkedhelper_events(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_lh_email ON linkedhelper_events(email);
+            CREATE INDEX IF NOT EXISTS idx_lh_profile_url ON linkedhelper_events(profile_url);
+            CREATE INDEX IF NOT EXISTS idx_lh_event_type ON linkedhelper_events(event_type);
+
+            -- Automated Scheduled Daily Sync Logs Table
+            CREATE TABLE IF NOT EXISTS scheduled_sync_logs (
+                id SERIAL PRIMARY KEY,
+                started_at TIMESTAMPTZ DEFAULT NOW(),
+                completed_at TIMESTAMPTZ,
+                status VARCHAR(50) DEFAULT 'running',
+                trigger_source VARCHAR(50) DEFAULT 'scheduler_daily_9am',
+                steps JSONB DEFAULT '[]'::jsonb,
+                summary TEXT,
+                error TEXT
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_sync_logs_started_at ON scheduled_sync_logs(started_at DESC);
         `);
     } finally {
         client.release();

@@ -12,10 +12,15 @@ export async function GET(request: Request) {
     const filterName = searchParams.get("name")?.trim();
     const filterEmail = searchParams.get("email")?.trim();
     const filterCompany = searchParams.get("company")?.trim();
+    const filterTitle = searchParams.get("title")?.trim();
+    const filterLocation = searchParams.get("location")?.trim();
     const filterOwner = searchParams.get("owner")?.trim();
     const filterLifecycleStage = searchParams.get("lifecycleStage")?.trim();
+    const filterLeadStatus = searchParams.get("leadStatus")?.trim();
     const filterCampaign = searchParams.get("campaign")?.trim();
     const filterChannel = searchParams.get("channel")?.trim();
+    const filterConnectionStatus = searchParams.get("connectionStatus")?.trim();
+    const filterReplied = searchParams.get("replied")?.trim();
     const filterDateFrom = searchParams.get("dateFrom")?.trim();
     const filterDateTo = searchParams.get("dateTo")?.trim();
 
@@ -52,6 +57,18 @@ export async function GET(request: Request) {
             paramIndex++;
         }
 
+        if (filterTitle) {
+            conditions.push(`title ILIKE $${paramIndex}`);
+            params.push(`%${filterTitle}%`);
+            paramIndex++;
+        }
+
+        if (filterLocation) {
+            conditions.push(`location ILIKE $${paramIndex}`);
+            params.push(`%${filterLocation}%`);
+            paramIndex++;
+        }
+
         if (filterOwner && filterOwner !== "All") {
             conditions.push(`contact_owner = $${paramIndex}`);
             params.push(filterOwner);
@@ -62,6 +79,26 @@ export async function GET(request: Request) {
             conditions.push(`lifecycle_stage = $${paramIndex}`);
             params.push(filterLifecycleStage);
             paramIndex++;
+        }
+
+        if (filterLeadStatus && filterLeadStatus !== "All") {
+            conditions.push(`lead_status = $${paramIndex}`);
+            params.push(filterLeadStatus);
+            paramIndex++;
+        }
+
+        if (filterConnectionStatus && filterConnectionStatus !== "All") {
+            conditions.push(`linkedin_connection_status = $${paramIndex}`);
+            params.push(filterConnectionStatus);
+            paramIndex++;
+        }
+
+        if (filterReplied && filterReplied !== "All") {
+            if (filterReplied === "yes") {
+                conditions.push(`(replied = 'true' OR replied = 'Yes')`);
+            } else {
+                conditions.push(`(replied IS NULL OR replied = 'false' OR replied = 'No')`);
+            }
         }
 
         if (filterCampaign && filterCampaign !== "All") {
@@ -93,17 +130,21 @@ export async function GET(request: Request) {
         const countRes = await pool.query(countQuery, params);
         const totalCount = parseInt(countRes.rows[0]?.total || "0", 10);
 
-        // Fetch distinct owners and campaigns for filter dropdowns
+        // Fetch distinct owners, campaigns, and statuses for filter dropdowns
         const filterMetaQuery = `
             SELECT 
                 ARRAY_AGG(DISTINCT contact_owner) FILTER (WHERE contact_owner IS NOT NULL AND contact_owner != 'Unassigned') AS owners,
                 ARRAY_AGG(DISTINCT lifecycle_stage) FILTER (WHERE lifecycle_stage IS NOT NULL) AS stages,
+                ARRAY_AGG(DISTINCT lead_status) FILTER (WHERE lead_status IS NOT NULL) AS lead_statuses,
+                ARRAY_AGG(DISTINCT linkedin_connection_status) FILTER (WHERE linkedin_connection_status IS NOT NULL) AS connection_statuses,
                 ARRAY_AGG(DISTINCT campaign) FILTER (WHERE campaign IS NOT NULL AND TRIM(campaign) != '' AND campaign != 'Direct / Inbound') AS campaigns
             FROM leads;
         `;
         const metaRes = await pool.query(filterMetaQuery);
         const availableOwners = metaRes.rows[0]?.owners || [];
         const availableStages = metaRes.rows[0]?.stages || [];
+        const availableLeadStatuses = metaRes.rows[0]?.lead_statuses || [];
+        const availableConnectionStatuses = metaRes.rows[0]?.connection_statuses || [];
         const availableCampaigns = metaRes.rows[0]?.campaigns || [];
 
         // Count pending push to HubSpot
@@ -143,6 +184,7 @@ export async function GET(request: Request) {
                 notes,
                 timeline,
                 reply_conversations AS "replyConversations",
+                linkedin_conversations AS "linkedinConversations",
                 TO_CHAR(created_at, 'YYYY-MM-DD') AS "createdDate"
             FROM leads
             ${whereClause}
@@ -160,6 +202,8 @@ export async function GET(request: Request) {
             limit,
             availableOwners,
             availableStages,
+            availableLeadStatuses,
+            availableConnectionStatuses,
             availableCampaigns,
             pendingPushCount,
         });

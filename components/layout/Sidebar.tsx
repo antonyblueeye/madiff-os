@@ -21,7 +21,6 @@ import { cn } from "@/lib/utils";
 const mainNavigation = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/crm", label: "Leads CRM", icon: Users, badge: "Omnichannel" },
-    { href: "/zoho-newsletter", label: "Newsletter Analytics", icon: Mail, badge: "Zoho Live" },
     { href: "/campaigns", label: "Campaigns", icon: Share2 },
     { href: "/newsletter-builder", label: "Newsletter Builder", icon: FileCode, badge: "Editor" },
     { href: "/content-plan", label: "Content Calendar", icon: CalendarDays },
@@ -42,8 +41,13 @@ export function Sidebar() {
         <aside className="flex w-64 flex-col border-r border-[#eaedf3] bg-white">
             {/* Brand Logo header */}
             <div className="flex h-18 items-center gap-3 border-b border-[#eaedf3] px-6 py-4">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-[#2f3e46] to-[#52796f] text-white shadow-sm font-bold text-base">
-                    M
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden bg-white shadow-sm border border-[#eaedf3]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                        src="/madiffgroup_logo.jpeg" 
+                        alt="Madiff Group Logo" 
+                        className="h-full w-full object-cover"
+                    />
                 </div>
                 <div>
                     <div className="text-base font-extrabold tracking-tight text-[#1f2d3d] flex items-center gap-1.5">
@@ -57,12 +61,12 @@ export function Sidebar() {
             <div className="flex items-center gap-3 border-b border-[#eaedf3] px-6 py-4 bg-[#fafbfc]">
                 <div className="relative">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#354f52] text-xs font-bold text-white ring-2 ring-[#eaedf3]">
-                        AD
+                        AS
                     </div>
                     <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-[#10b981] ring-2 ring-white" />
                 </div>
                 <div className="overflow-hidden">
-                    <p className="text-xs font-bold text-[#1f2d3d] truncate">Anton D.</p>
+                    <p className="text-xs font-bold text-[#1f2d3d] truncate">Anton Synieokyi</p>
                     <p className="text-[11px] text-[#6e84a3] truncate">Super Admin · Madiff</p>
                 </div>
             </div>

@@ -66,11 +66,16 @@ export async function GET() {
                     details: `${totalZohoCampaigns} campaigns & ${totalZohoLists} subscriber lists (${Number(totalZohoSubscribers).toLocaleString()} contacts) active in DB.`
                 },
                 apollo: {
-                    configured: false,
-                    status: "not_configured",
+                    configured: Boolean(process.env.APOLLO_KEY || process.env.APOLLO_API_KEY),
+                    status: (process.env.APOLLO_KEY || process.env.APOLLO_API_KEY) ? "connected" : "not_configured",
                     title: "Apollo.io",
                     category: "Lead Sourcing",
-                    details: "API key or webhook secret not configured yet. Leads are currently imported via CSV/sample datasets."
+                    authType: "API Key (X-Api-Key)",
+                    tokenMasked: (process.env.APOLLO_KEY || process.env.APOLLO_API_KEY)
+                        ? `${(process.env.APOLLO_KEY || process.env.APOLLO_API_KEY)!.slice(0, 6)}...${(process.env.APOLLO_KEY || process.env.APOLLO_API_KEY)!.slice(-4)}`
+                        : null,
+                    endpoint: "https://api.apollo.io/v1",
+                    details: "Authenticated via API Key. Live contact search, verified email discovery and bulk enrichment directly integrated into CRM."
                 },
                 replyio: {
                     configured: Boolean(process.env.REPLY_API_KEY),
