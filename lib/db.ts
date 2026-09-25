@@ -9,13 +9,23 @@ declare global {
     var _isDbInitialized: boolean | undefined;
 }
 
+const isProduction = process.env.NODE_ENV === "production";
+const isCloudDb = connectionString.includes("sslmode=require") || connectionString.includes("neon.tech") || connectionString.includes("supabase") || connectionString.includes("railway");
+
+const poolConfig = {
+    connectionString,
+    ssl: isCloudDb || (isProduction && !connectionString.includes("127.0.0.1") && !connectionString.includes("localhost"))
+        ? { rejectUnauthorized: false }
+        : false,
+};
+
 let pool: Pool;
 
-if (process.env.NODE_ENV === "production") {
-    pool = new Pool({ connectionString });
+if (isProduction) {
+    pool = new Pool(poolConfig);
 } else {
     if (!global._pgPool) {
-        global._pgPool = new Pool({ connectionString });
+        global._pgPool = new Pool(poolConfig);
     }
     pool = global._pgPool;
 }
