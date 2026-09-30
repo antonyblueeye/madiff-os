@@ -209,6 +209,48 @@ export async function initDb() {
             );
 
             CREATE INDEX IF NOT EXISTS idx_sync_logs_started_at ON scheduled_sync_logs(started_at DESC);
+
+            -- Vacancy Searches & Saved Queries
+            CREATE TABLE IF NOT EXISTS vacancy_searches (
+                id SERIAL PRIMARY KEY,
+                query VARCHAR(255) NOT NULL,
+                location VARCHAR(255) DEFAULT 'Poland',
+                total_found INT DEFAULT 0,
+                last_synced_at TIMESTAMPTZ DEFAULT NOW(),
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(query, location)
+            );
+
+            -- Vacancies Aggregator Table
+            CREATE TABLE IF NOT EXISTS vacancies (
+                id SERIAL PRIMARY KEY,
+                search_query VARCHAR(255) NOT NULL,
+                canonical_key VARCHAR(255) NOT NULL, -- normalized slug: company + title
+                title VARCHAR(255) NOT NULL,
+                company_name VARCHAR(255) NOT NULL,
+                location VARCHAR(255),
+                is_remote BOOLEAN DEFAULT false,
+                sources JSONB DEFAULT '[]'::jsonb, -- e.g. [{"name": "NoFluffJobs", "url": "https://..."}, {"name": "Remotive", "url": "..."}]
+                primary_url TEXT NOT NULL,
+                salary_from NUMERIC(10,2),
+                salary_to NUMERIC(10,2),
+                salary_currency VARCHAR(10) DEFAULT 'PLN',
+                salary_type VARCHAR(50),
+                description TEXT,
+                requirements JSONB DEFAULT '[]'::jsonb,
+                posted_at TIMESTAMPTZ,
+                status VARCHAR(50) DEFAULT 'active', -- 'active' | 'inactive' | 'archived'
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(canonical_key)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_vacancies_search_query ON vacancies(search_query);
+            CREATE INDEX IF NOT EXISTS idx_vacancies_status ON vacancies(status);
+            CREATE INDEX IF NOT EXISTS idx_vacancies_is_active ON vacancies(is_active);
+            CREATE INDEX IF NOT EXISTS idx_vacancies_company ON vacancies(company_name);
+            CREATE INDEX IF NOT EXISTS idx_vacancies_posted_at ON vacancies(posted_at DESC);
         `);
     } finally {
         client.release();

@@ -15,11 +15,13 @@ import {
     Settings,
     ChevronRight,
     Mail,
+    Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const mainNavigation = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/vacancies", label: "Vacancies Radar", icon: Briefcase, badge: "Jobs PL" },
     { href: "/crm", label: "Leads CRM", icon: Users, badge: "Omnichannel" },
     { href: "/campaigns", label: "Campaigns", icon: Share2 },
     { href: "/newsletter-builder", label: "Newsletter Builder", icon: FileCode, badge: "Editor" },
