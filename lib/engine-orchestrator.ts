@@ -144,8 +144,20 @@ export async function executeEngineWorkflow(engineId: number): Promise<{
         );
 
         // STEP 3: Company Extraction & Apollo Sourcing
+        // Clean Polish/Global legal suffixes (Sp. z o.o., S.A., LLC, Ltd, Inc) so Apollo matches them reliably
+        const cleanCompanyName = (raw: string) => {
+            return raw
+                .replace(/\b(sp\.\s*z\s*o\.o\.|spółka\s*z\s*o\.o\.|sp\.\s*k\.|s\.a\.|llc|ltd|inc|gmbh|co\.)/gi, "")
+                .replace(/[,\(\)]/g, " ")
+                .trim();
+        };
+
         const targetCompanies = Array.from(
-            new Set(approvedVacancies.map((v) => v.companyName.trim()).filter(Boolean))
+            new Set(
+                approvedVacancies
+                    .map((v) => cleanCompanyName(v.companyName))
+                    .filter((c) => c && c.length >= 2)
+            )
         ).slice(0, 15);
 
         addLog("Apollo", "info", `Identified ${targetCompanies.length} hiring companies. Searching Apollo for decision makers...`, {
@@ -155,24 +167,7 @@ export async function executeEngineWorkflow(engineId: number): Promise<{
         const apolloApiKey = process.env.APOLLO_KEY || process.env.APOLLO_API_KEY || "";
         const targetTitles = engine.target_titles?.length > 0 
             ? engine.target_titles 
-            : ["CTO", "VP of Engineering", "Head of Engineering", "Engineering Manager", "Technical Lead", "Founder", "CEO"];
-
-        const apolloPayload: any = {
-            page: 1,
-            per_page: Math.min(engine.leads_per_run || 25, 50),
-            person_titles: targetTitles,
-            contact_email_status: ["verified"],
-        };
-
-        if (targetCompanies.length > 0) {
-            apolloPayload.q_organization_keyword_tags = targetCompanies;
-        }
-        if (engine.target_industries?.length > 0) {
-            apolloPayload.organization_industries = engine.target_industries;
-        }
-        if (engine.employee_ranges?.length > 0) {
-            apolloPayload.organization_num_employees_ranges = engine.employee_ranges;
-        }
+            : ["CTO", "VP of Engineering", "Head of AI", "Head of Engineering", "Engineering Director", "Engineering Manager", "Technical Lead", "Founder", "CEO"];
 
         const apolloHeaders: Record<string, string> = {
             "Content-Type": "application/json",
@@ -181,24 +176,44 @@ export async function executeEngineWorkflow(engineId: number): Promise<{
             apolloHeaders["X-Api-Key"] = apolloApiKey;
         }
 
+        const maxLeadsGoal = Math.min(engine.leads_per_run || 25, 50);
         let apolloPeopleIds: string[] = [];
-        try {
-            const apolloSearchRes = await fetch("https://api.apollo.io/v1/mixed_people/api_search", {
-                method: "POST",
-                headers: apolloHeaders,
-                body: JSON.stringify(apolloPayload),
-            });
 
-            if (apolloSearchRes.ok) {
-                const apolloData = await apolloSearchRes.json();
-                apolloPeopleIds = (apolloData.people || []).map((p: any) => p.id).filter(Boolean);
-            } else {
-                const err = await apolloSearchRes.json().catch(() => ({}));
-                addLog("Apollo", "warning", `Apollo search note: ${err.message || apolloSearchRes.statusText}`);
+        // Query Apollo per qualified hiring company to guarantee high-relevance leads
+        for (const company of targetCompanies) {
+            if (apolloPeopleIds.length >= maxLeadsGoal) break;
+
+            const singleCompanyPayload: any = {
+                page: 1,
+                per_page: 8,
+                q_organization_name: company,
+                person_titles: targetTitles,
+            };
+
+            // Only apply employee range filter if provided, avoiding overly restrictive zero-match tags
+            if (engine.employee_ranges?.length > 0) {
+                singleCompanyPayload.organization_num_employees_ranges = engine.employee_ranges;
             }
-        } catch (apErr: any) {
-            addLog("Apollo", "warning", `Apollo search call skipped: ${apErr.message}`);
+
+            try {
+                const searchRes = await fetch("https://api.apollo.io/v1/mixed_people/api_search", {
+                    method: "POST",
+                    headers: apolloHeaders,
+                    body: JSON.stringify(singleCompanyPayload),
+                });
+
+                if (searchRes.ok) {
+                    const data = await searchRes.json();
+                    const ids = (data.people || []).map((p: any) => p.id).filter(Boolean);
+                    apolloPeopleIds.push(...ids);
+                }
+            } catch (singleErr: any) {
+                console.warn(`Apollo search for "${company}" failed:`, singleErr.message);
+            }
         }
+
+        // Deduplicate person IDs
+        apolloPeopleIds = Array.from(new Set(apolloPeopleIds)).slice(0, maxLeadsGoal);
 
         // Enrich contacts via people/bulk_match
         let enrichedContacts: any[] = [];
@@ -208,7 +223,7 @@ export async function executeEngineWorkflow(engineId: number): Promise<{
                     method: "POST",
                     headers: apolloHeaders,
                     body: JSON.stringify({
-                        details: apolloPeopleIds.slice(0, 25).map((id) => ({ id })),
+                        details: apolloPeopleIds.map((id) => ({ id })),
                     }),
                 });
                 if (bulkRes.ok) {
