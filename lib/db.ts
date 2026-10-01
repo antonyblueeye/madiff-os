@@ -251,6 +251,52 @@ export async function initDb() {
             CREATE INDEX IF NOT EXISTS idx_vacancies_is_active ON vacancies(is_active);
             CREATE INDEX IF NOT EXISTS idx_vacancies_company ON vacancies(company_name);
             CREATE INDEX IF NOT EXISTS idx_vacancies_posted_at ON vacancies(posted_at DESC);
+
+            -- Outbound AI Engines Table
+            CREATE TABLE IF NOT EXISTS outbound_engines (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                target_role VARCHAR(255) NOT NULL,
+                role_description TEXT NOT NULL,
+                scrape_keywords TEXT[] DEFAULT ARRAY[]::TEXT[],
+                scrape_location VARCHAR(255) DEFAULT 'Poland',
+                target_titles TEXT[] DEFAULT ARRAY[]::TEXT[],
+                target_industries TEXT[] DEFAULT ARRAY[]::TEXT[],
+                employee_ranges TEXT[] DEFAULT ARRAY[]::TEXT[],
+                leads_per_run INT DEFAULT 25,
+                reply_campaign_id BIGINT,
+                reply_campaign_name VARCHAR(255),
+                email_subject TEXT,
+                email_body TEXT,
+                status VARCHAR(50) DEFAULT 'active', -- 'active' | 'paused' | 'archived'
+                frequency VARCHAR(50) DEFAULT 'daily', -- 'manual' | 'hourly' | 'daily' | 'weekly'
+                last_run_at TIMESTAMPTZ,
+                next_run_at TIMESTAMPTZ,
+                stats JSONB DEFAULT '{"totalScraped":0,"aiApproved":0,"aiRejected":0,"leadsFound":0,"pushedToReply":0}'::jsonb,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_engines_status ON outbound_engines(status);
+
+            -- Engine Execution Runs Log
+            CREATE TABLE IF NOT EXISTS engine_runs (
+                id SERIAL PRIMARY KEY,
+                engine_id INT NOT NULL REFERENCES outbound_engines(id) ON DELETE CASCADE,
+                status VARCHAR(50) DEFAULT 'running', -- 'running' | 'completed' | 'failed'
+                started_at TIMESTAMPTZ DEFAULT NOW(),
+                completed_at TIMESTAMPTZ,
+                scraped_count INT DEFAULT 0,
+                approved_count INT DEFAULT 0,
+                rejected_count INT DEFAULT 0,
+                leads_count INT DEFAULT 0,
+                pushed_count INT DEFAULT 0,
+                logs JSONB DEFAULT '[]'::jsonb,
+                error_message TEXT
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_engine_runs_engine_id ON engine_runs(engine_id);
+            CREATE INDEX IF NOT EXISTS idx_engine_runs_started_at ON engine_runs(started_at DESC);
         `);
     } finally {
         client.release();

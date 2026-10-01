@@ -16,11 +16,13 @@ import {
     ChevronRight,
     Mail,
     Briefcase,
+    Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const mainNavigation = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/engines", label: "Outbound Engines", icon: Zap, badge: "AI Autopilot" },
     { href: "/vacancies", label: "Vacancies Radar", icon: Briefcase, badge: "Jobs PL" },
     { href: "/crm", label: "Leads CRM", icon: Users, badge: "Omnichannel" },
     { href: "/campaigns", label: "Campaigns", icon: Share2 },
