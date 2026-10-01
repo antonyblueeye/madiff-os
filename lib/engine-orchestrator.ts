@@ -152,7 +152,7 @@ export async function executeEngineWorkflow(engineId: number): Promise<{
             companies: targetCompanies,
         });
 
-        const apolloApiKey = process.env.APOLLO_KEY || process.env.APOLLO_API_KEY;
+        const apolloApiKey = process.env.APOLLO_KEY || process.env.APOLLO_API_KEY || "";
         const targetTitles = engine.target_titles?.length > 0 
             ? engine.target_titles 
             : ["CTO", "VP of Engineering", "Head of Engineering", "Engineering Manager", "Technical Lead", "Founder", "CEO"];
@@ -174,14 +174,18 @@ export async function executeEngineWorkflow(engineId: number): Promise<{
             apolloPayload.organization_num_employees_ranges = engine.employee_ranges;
         }
 
+        const apolloHeaders: Record<string, string> = {
+            "Content-Type": "application/json",
+        };
+        if (apolloApiKey) {
+            apolloHeaders["X-Api-Key"] = apolloApiKey;
+        }
+
         let apolloPeopleIds: string[] = [];
         try {
             const apolloSearchRes = await fetch("https://api.apollo.io/v1/mixed_people/api_search", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Api-Key": apolloApiKey,
-                },
+                headers: apolloHeaders,
                 body: JSON.stringify(apolloPayload),
             });
 
@@ -198,14 +202,11 @@ export async function executeEngineWorkflow(engineId: number): Promise<{
 
         // Enrich contacts via people/bulk_match
         let enrichedContacts: any[] = [];
-        if (apolloPeopleIds.length > 0) {
+        if (apolloPeopleIds.length > 0 && apolloApiKey) {
             try {
                 const bulkRes = await fetch("https://api.apollo.io/v1/people/bulk_match", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-Api-Key": apolloApiKey,
-                    },
+                    headers: apolloHeaders,
                     body: JSON.stringify({
                         details: apolloPeopleIds.slice(0, 25).map((id) => ({ id })),
                     }),

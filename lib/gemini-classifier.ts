@@ -30,93 +30,106 @@ export async function validateVacanciesWithGemini(params: {
         }));
     }
 
-    const systemPrompt = `You are an expert technical recruiter and talent qualification AI.
-Your task is to analyze candidate job postings found online and determine if they truly match the target hiring requirements.
-Many job boards return false positives (e.g. searching for "AI Engineer" might return "Design Engineer", "Sales Engineer", or unrelated roles).
+    const systemPrompt = `You are an expert technical talent qualification AI.
+Your task is to analyze candidate job postings and strictly verify if they match the TARGET ROLE.
+Many job boards return false positives (e.g. searching for "AI Engineer" might return "Design Engineer", "Civil Engineer", "Sales Engineer", or other unrelated positions).
 
 TARGET ROLE: ${params.targetRole}
-ROLE DESCRIPTION & IDEAL SKILLS: ${params.roleDescription}
+EVALUATION CRITERIA: ${params.roleDescription}
 
-Analyze the provided list of job postings. For each posting, decide whether this company is legitimately hiring for the TARGET ROLE.
-Return ONLY valid JSON matching this exact array structure:
+For each posting, return true if it is legitimately hiring for the target role, or false if it is unrelated.
+Return ONLY a valid JSON array matching this exact schema:
 [
   {
     "index": number,
     "isRelevant": boolean,
     "confidenceScore": number (0-100),
-    "reason": "Brief explanation of why it is relevant or why it was rejected"
+    "reason": "Short explanation why relevant or rejected"
   }
 ]`;
 
-    const userPrompt = `Here is the list of job postings to evaluate:
-${JSON.stringify(
-    params.vacancies.map((v, idx) => ({
-        index: idx,
-        title: v.title,
-        company: v.companyName,
-        techStack: v.requirements,
-        descriptionPreview: v.description.slice(0, 300),
-    })),
-    null,
-    2
-)}`;
+    // Process in batches of 35 to prevent payload limits and 503 timeouts
+    const batchSize = 35;
+    const finalResults: GeminiValidationResult[] = [];
 
-    try {
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            role: "user",
-                            parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }],
+    for (let i = 0; i < params.vacancies.length; i += batchSize) {
+        const chunk = params.vacancies.slice(i, i + batchSize);
+        const userPrompt = `Evaluate these postings:\n${JSON.stringify(
+            chunk.map((v, localIdx) => ({
+                index: localIdx,
+                title: v.title,
+                company: v.companyName,
+                requirements: v.requirements?.slice(0, 5),
+                descriptionPreview: (v.description || "").slice(0, 200),
+            })),
+            null,
+            2
+        )}`;
+
+        try {
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [
+                            {
+                                role: "user",
+                                parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }],
+                            },
+                        ],
+                        generationConfig: {
+                            temperature: 0.1,
+                            responseMimeType: "application/json",
                         },
-                    ],
-                    generationConfig: {
-                        temperature: 0.1,
-                        responseMimeType: "application/json",
-                    },
-                }),
+                    }),
+                }
+            );
+
+            if (!response.ok) {
+                const errText = await response.text();
+                console.error("[Gemini API Error]", response.status, errText);
+                // On failure for this chunk, fallback
+                chunk.forEach((v) => {
+                    finalResults.push({
+                        vacancyTitle: v.title,
+                        companyName: v.companyName,
+                        isRelevant: true,
+                        confidenceScore: 50,
+                        reason: `AI API returned status ${response.status}`,
+                    });
+                });
+                continue;
             }
-        );
 
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error("[Gemini API Error]", response.status, errText);
-            // Fallback: accept all
-            return params.vacancies.map((v) => ({
-                vacancyTitle: v.title,
-                companyName: v.companyName,
-                isRelevant: true,
-                confidenceScore: 60,
-                reason: "Fallback: Gemini evaluation call failed",
-            }));
+            const data = await response.json();
+            const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+            const parsedArray: any[] = JSON.parse(rawContent);
+
+            chunk.forEach((v, localIdx) => {
+                const evalItem = parsedArray.find((item: any) => item.index === localIdx) || parsedArray[localIdx];
+                finalResults.push({
+                    vacancyTitle: v.title,
+                    companyName: v.companyName,
+                    isRelevant: evalItem ? Boolean(evalItem.isRelevant) : true,
+                    confidenceScore: evalItem?.confidenceScore ?? 75,
+                    reason: evalItem?.reason || "Evaluated by Gemini",
+                });
+            });
+        } catch (err: any) {
+            console.error("[Gemini Chunk Error]:", err.message);
+            chunk.forEach((v) => {
+                finalResults.push({
+                    vacancyTitle: v.title,
+                    companyName: v.companyName,
+                    isRelevant: true,
+                    confidenceScore: 50,
+                    reason: `Evaluation error: ${err.message}`,
+                });
+            });
         }
-
-        const data = await response.json();
-        const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
-        const parsedArray: any[] = JSON.parse(rawContent);
-
-        return params.vacancies.map((v, idx) => {
-            const evaluation = parsedArray.find((item: any) => item.index === idx) || parsedArray[idx];
-            return {
-                vacancyTitle: v.title,
-                companyName: v.companyName,
-                isRelevant: evaluation ? Boolean(evaluation.isRelevant) : true,
-                confidenceScore: evaluation?.confidenceScore ?? 70,
-                reason: evaluation?.reason || "Matched by AI classifier",
-            };
-        });
-    } catch (err: any) {
-        console.error("[Gemini Classification Exception]:", err.message);
-        return params.vacancies.map((v) => ({
-            vacancyTitle: v.title,
-            companyName: v.companyName,
-            isRelevant: true,
-            confidenceScore: 50,
-            reason: `Error during evaluation: ${err.message}`,
-        }));
     }
+
+    return finalResults;
 }
