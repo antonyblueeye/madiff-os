@@ -241,10 +241,15 @@ export async function initDb() {
                 posted_at TIMESTAMPTZ,
                 status VARCHAR(50) DEFAULT 'active', -- 'active' | 'inactive' | 'archived'
                 is_active BOOLEAN DEFAULT true,
+                engine_id INT,
+                processed_by_engines INT[] DEFAULT ARRAY[]::INT[],
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 updated_at TIMESTAMPTZ DEFAULT NOW(),
                 UNIQUE(canonical_key)
             );
+
+            ALTER TABLE vacancies ADD COLUMN IF NOT EXISTS engine_id INT;
+            ALTER TABLE vacancies ADD COLUMN IF NOT EXISTS processed_by_engines INT[] DEFAULT ARRAY[]::INT[];
 
             CREATE INDEX IF NOT EXISTS idx_vacancies_search_query ON vacancies(search_query);
             CREATE INDEX IF NOT EXISTS idx_vacancies_status ON vacancies(status);
@@ -268,6 +273,7 @@ export async function initDb() {
                 reply_campaign_name VARCHAR(255),
                 email_subject TEXT,
                 email_body TEXT,
+                enable_ai_filter BOOLEAN DEFAULT true,
                 status VARCHAR(50) DEFAULT 'active', -- 'active' | 'paused' | 'archived'
                 frequency VARCHAR(50) DEFAULT 'daily', -- 'manual' | 'hourly' | 'daily' | 'weekly'
                 last_run_at TIMESTAMPTZ,
@@ -276,6 +282,8 @@ export async function initDb() {
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             );
+
+            ALTER TABLE outbound_engines ADD COLUMN IF NOT EXISTS enable_ai_filter BOOLEAN DEFAULT true;
 
             CREATE INDEX IF NOT EXISTS idx_engines_status ON outbound_engines(status);
 

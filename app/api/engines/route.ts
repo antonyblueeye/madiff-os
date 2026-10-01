@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
             replyCampaignName = null,
             emailSubject = null,
             emailBody = null,
+            enableAiFilter = true,
             frequency = "daily",
         } = body;
 
@@ -98,13 +99,13 @@ export async function POST(req: NextRequest) {
                     scrape_location, target_titles, target_industries,
                     employee_ranges, leads_per_run, reply_campaign_id,
                     reply_campaign_name, email_subject, email_body,
-                    frequency, status, stats
+                    enable_ai_filter, frequency, status, stats
                 ) VALUES (
                     $1, $2, $3, $4,
                     $5, $6, $7,
                     $8, $9, $10,
                     $11, $12, $13,
-                    $14, 'active', '{"totalScraped":0,"aiApproved":0,"aiRejected":0,"leadsFound":0,"pushedToReply":0}'::jsonb
+                    $14, $15, 'active', '{"totalScraped":0,"aiApproved":0,"aiRejected":0,"leadsFound":0,"pushedToReply":0}'::jsonb
                 ) RETURNING *`,
                 [
                     name.trim(),
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest) {
                     replyCampaignName,
                     emailSubject,
                     emailBody,
+                    enableAiFilter !== false,
                     frequency || "daily",
                 ]
             );

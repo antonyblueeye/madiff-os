@@ -53,6 +53,7 @@ export default function EnginesPage() {
     const [emailBody, setEmailBody] = useState(
         "Hi {{firstName}},\n\nSaw that your team is expanding and actively hiring for an AI Engineer.\n\nWe specialize in accelerating technical hiring and providing senior pre-vetted AI talent on flexible models.\n\nWould you be open to a 10-minute intro call this week to see if we can assist?\n\nBest,\nAnton"
     );
+    const [enableAiFilter, setEnableAiFilter] = useState(true);
     const [frequency, setFrequency] = useState<"daily" | "hourly" | "weekly" | "manual">("daily");
     const [runImmediately, setRunImmediately] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -150,6 +151,7 @@ export default function EnginesPage() {
                 replyCampaignName: replyMode === "existing" ? selectedCampaignObj?.name || null : newSeqName || `Engine - ${name}`,
                 emailSubject: replyMode === "new" ? emailSubject : null,
                 emailBody: replyMode === "new" ? emailBody : null,
+                enableAiFilter,
                 frequency,
                 runImmediately,
             };
@@ -323,6 +325,13 @@ export default function EnginesPage() {
 
                                                 <span className="text-[10px] font-semibold px-2 py-0.5 bg-[#f1f4f8] text-[#354f52] rounded-md">
                                                     Frequency: {eng.frequency || "Daily"}
+                                                </span>
+
+                                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                                                    eng.enable_ai_filter !== false ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-slate-100 text-slate-600"
+                                                }`}>
+                                                    <Sparkles className="h-2.5 w-2.5" />
+                                                    AI Filter: {eng.enable_ai_filter !== false ? "ON" : "OFF"}
                                                 </span>
 
                                                 {eng.reply_campaign_name && (
@@ -554,20 +563,37 @@ export default function EnginesPage() {
                                 </div>
 
                                 <div>
-                                    <label className="text-xs font-bold text-[#1f2d3d] flex items-center justify-between">
-                                        <span>Role Description & Gemini AI Qualification Rules</span>
-                                        <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                                            <Sparkles className="h-3 w-3" /> Gemini 3.8 Flash Powered
-                                        </span>
-                                    </label>
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-bold text-[#1f2d3d] flex items-center gap-1.5">
+                                            <span>Role Description & Hiring Requirements</span>
+                                        </label>
+                                        <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-[#354f52] bg-white px-2 py-0.5 rounded-md border border-[#eaedf3]">
+                                            <input
+                                                type="checkbox"
+                                                checked={enableAiFilter}
+                                                onChange={(e) => setEnableAiFilter(e.target.checked)}
+                                                className="h-3.5 w-3.5 rounded accent-[#354f52]"
+                                            />
+                                            <span className="flex items-center gap-1 text-[11px]">
+                                                <Sparkles className="h-3 w-3 text-emerald-600" />
+                                                Filter with Gemini AI
+                                            </span>
+                                        </label>
+                                    </div>
+
                                     <textarea
                                         rows={3}
                                         required
                                         placeholder="Describe ideal skills and explicitly state what to reject (e.g. 'Must have commercial Python/PyTorch/LLM. Reject civil engineers, sales engineers and UI designers')."
                                         value={roleDescription}
                                         onChange={(e) => setRoleDescription(e.target.value)}
-                                        className="w-full mt-1 px-3 py-2 bg-white border border-[#eaedf3] rounded-lg text-xs font-medium focus:outline-none focus:border-[#354f52]"
+                                        className="w-full mt-1.5 px-3 py-2 bg-white border border-[#eaedf3] rounded-lg text-xs font-medium focus:outline-none focus:border-[#354f52]"
                                     />
+                                    {!enableAiFilter && (
+                                        <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-100 p-1.5 rounded mt-1 font-medium">
+                                            ℹ AI Filter is <b>OFF</b>: All scraped vacancies matching the keywords will be passed directly to Apollo decision-maker search without AI disqualification.
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 

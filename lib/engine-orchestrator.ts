@@ -18,6 +18,7 @@ export interface OutboundEngineConfig {
     reply_campaign_name?: string | null;
     email_subject?: string | null;
     email_body?: string | null;
+    enable_ai_filter?: boolean;
     status: "active" | "paused" | "archived";
     frequency: "manual" | "hourly" | "daily" | "weekly";
     last_run_at?: string | null;
@@ -91,7 +92,7 @@ export async function executeEngineWorkflow(engineId: number): Promise<{
 
         addLog("Init", "info", `Started Engine run for "${engine.name}". Target: "${engine.target_role}"`);
 
-        // STEP 1: Multi-portal Scraping
+        // STEP 1: Multi-portal Scraping & Incremental Vacancy Deduplication
         const searchKeywords = engine.scrape_keywords?.length > 0 ? engine.scrape_keywords : [engine.target_role];
         let allScrapedJobs: any[] = [];
 
@@ -101,47 +102,114 @@ export async function executeEngineWorkflow(engineId: number): Promise<{
             allScrapedJobs.push(...jobs);
         }
 
-        // Deduplicate locally
+        // 1a. Deduplicate within current scraping batch
         const uniqueJobsMap = new Map<string, any>();
         for (const j of allScrapedJobs) {
             if (!uniqueJobsMap.has(j.canonicalKey)) {
                 uniqueJobsMap.set(j.canonicalKey, j);
             }
         }
-        const rawVacancies = Array.from(uniqueJobsMap.values());
-        addLog("Scraping", "success", `Scraped ${rawVacancies.length} vacancies across connected portals`, {
-            count: rawVacancies.length,
-        });
+        const scrapedBatch = Array.from(uniqueJobsMap.values());
+
+        // 1b. Deduplicate against DATABASE history (only process BRAND NEW vacancies never seen by this engine)
+        const previouslyProcessed = await client.query(
+            `SELECT canonical_key FROM vacancies WHERE $1 = ANY(processed_by_engines)`,
+            [engine.id]
+        );
+        const processedSet = new Set(previouslyProcessed.rows.map((r: any) => r.canonical_key));
+
+        const rawVacancies = scrapedBatch.filter((j) => !processedSet.has(j.canonicalKey));
+        const duplicateSkippedCount = scrapedBatch.length - rawVacancies.length;
+
+        addLog(
+            "Scraping",
+            "success",
+            `Scraped ${scrapedBatch.length} vacancies across connected portals. Found ${rawVacancies.length} brand new vacancies (${duplicateSkippedCount} already processed in previous runs skipped).`,
+            {
+                totalScraped: scrapedBatch.length,
+                newVacancies: rawVacancies.length,
+                duplicatesSkipped: duplicateSkippedCount,
+            }
+        );
 
         if (rawVacancies.length === 0) {
-            addLog("Scraping", "warning", "No vacancies discovered during scraping pass.");
+            addLog("Scraping", "info", "No new unique vacancies since last run. Skipping to Apollo sourcing if existing companies need replenishment.");
         }
 
-        // STEP 2: Gemini AI Job Relevance Qualification
-        addLog("Gemini AI", "info", `Evaluating ${rawVacancies.length} vacancies against role description with Gemini 3.8 Flash...`);
-        const aiEvaluations = await validateVacanciesWithGemini({
-            targetRole: engine.target_role,
-            roleDescription: engine.role_description,
-            vacancies: rawVacancies,
-        });
+        // Persist newly discovered vacancies in database with engine stamp
+        for (const vac of rawVacancies) {
+            await client.query(
+                `INSERT INTO vacancies (
+                    search_query, canonical_key, title, company_name, location,
+                    is_remote, sources, primary_url, salary_from, salary_to,
+                    salary_currency, salary_type, description, requirements,
+                    posted_at, status, is_active, engine_id, processed_by_engines, updated_at
+                ) VALUES (
+                    $1, $2, $3, $4, $5,
+                    $6, $7, $8, $9, $10,
+                    $11, $12, $13, $14,
+                    $15, 'active', true, $16, ARRAY[$16]::INT[], NOW()
+                )
+                ON CONFLICT (canonical_key) DO UPDATE SET
+                    processed_by_engines = array_append(vacancies.processed_by_engines, $16),
+                    is_active = true,
+                    status = 'active',
+                    updated_at = NOW()`,
+                [
+                    engine.target_role.toLowerCase(),
+                    vac.canonicalKey,
+                    vac.title,
+                    vac.companyName,
+                    vac.location,
+                    vac.isRemote,
+                    JSON.stringify(vac.sources),
+                    vac.primaryUrl,
+                    vac.salaryFrom,
+                    vac.salaryTo,
+                    vac.salaryCurrency,
+                    vac.salaryType,
+                    vac.description,
+                    JSON.stringify(vac.requirements),
+                    vac.postedAt,
+                    engine.id,
+                ]
+            );
+        }
 
+        // STEP 2: Job Relevance Qualification (Optional Gemini AI Filter)
         const approvedVacancies: any[] = [];
         const rejectedVacancies: any[] = [];
 
-        aiEvaluations.forEach((evalResult, idx) => {
-            const vac = rawVacancies[idx];
-            if (evalResult.isRelevant) {
-                approvedVacancies.push({ ...vac, aiReason: evalResult.reason });
-            } else {
-                rejectedVacancies.push({ ...vac, aiReason: evalResult.reason });
-            }
-        });
+        const isAiFilterEnabled = engine.enable_ai_filter !== false; // default true unless explicitly toggled off
 
-        addLog(
-            "Gemini AI",
-            "success",
-            `AI Qualification complete: ${approvedVacancies.length} approved, ${rejectedVacancies.length} rejected as irrelevant (false positives filtered out).`
-        );
+        if (!isAiFilterEnabled) {
+            addLog("AI Filter", "info", "AI Filtering disabled in Engine settings. Approving all unique scraped vacancies directly.");
+            rawVacancies.forEach((vac) => {
+                approvedVacancies.push({ ...vac, aiReason: "AI filter disabled (all passed)" });
+            });
+        } else if (rawVacancies.length > 0) {
+            addLog("Gemini AI", "info", `Evaluating ${rawVacancies.length} new vacancies against role description with Gemini 3.5 Flash...`);
+            const aiEvaluations = await validateVacanciesWithGemini({
+                targetRole: engine.target_role,
+                roleDescription: engine.role_description,
+                vacancies: rawVacancies,
+            });
+
+            aiEvaluations.forEach((evalResult, idx) => {
+                const vac = rawVacancies[idx];
+                if (evalResult.isRelevant) {
+                    approvedVacancies.push({ ...vac, aiReason: evalResult.reason });
+                } else {
+                    rejectedVacancies.push({ ...vac, aiReason: evalResult.reason });
+                }
+            });
+
+            addLog(
+                "Gemini AI",
+                "success",
+                `AI Qualification complete: ${approvedVacancies.length} approved, ${rejectedVacancies.length} rejected as irrelevant (false positives filtered out).`
+            );
+        }
 
         // STEP 3: Company Extraction & Apollo Sourcing
         // Clean Polish/Global legal suffixes (Sp. z o.o., S.A., LLC, Ltd, Inc) so Apollo matches them reliably
