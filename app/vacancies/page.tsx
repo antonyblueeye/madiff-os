@@ -18,9 +18,10 @@ import {
     Cpu,
     ArrowUpRight,
     TrendingUp,
-    BookmarkCheck
+    BookmarkCheck,
+    Check,
 } from "lucide-react";
-import { VacancyItem, VacancySearchRecord } from "@/lib/vacancy-scraper";
+import { VacancyItem, VacancySearchRecord, SUPPORTED_JOB_SOURCES } from "@/lib/vacancy-scraper";
 
 export default function VacanciesPage() {
     const [searchQuery, setSearchQuery] = useState("AI engineer");
@@ -127,11 +128,11 @@ export default function VacanciesPage() {
                             <Briefcase className="h-6 w-6" />
                         </div>
                         <h1 className="text-2xl font-extrabold tracking-tight text-[#1f2d3d]">
-                            Vacancies Radar <span className="text-sm font-semibold px-2 py-0.5 rounded-full bg-[#84a98c]/20 text-[#354f52]">PL & Remote</span>
+                            Vacancies Radar <span className="text-sm font-semibold px-2 py-0.5 rounded-full bg-[#84a98c]/20 text-[#354f52]">PL & International</span>
                         </h1>
                     </div>
                     <p className="mt-1 text-xs text-[#6e84a3]">
-                        Scrapes, aggregates and deduplicates job offers from Poland (NoFluffJobs, Remotive & more). Saves search profiles with automatic change-tracking.
+                        Real-time multi-portal scraper & job intelligence aggregator. Deduplicates identical listings across Polish and international portals.
                     </p>
                 </div>
 
@@ -154,6 +155,52 @@ export default function VacanciesPage() {
                             All ({vacancies.length})
                         </button>
                     </div>
+                </div>
+            </div>
+
+            {/* Scraper Sources Banner */}
+            <div className="bg-white rounded-xl border border-[#eaedf3] p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4 text-[#354f52]" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-[#1f2d3d]">
+                            Connected Scraping Gateways ({SUPPORTED_JOB_SOURCES.length} Portals)
+                        </span>
+                    </div>
+                    <span className="text-[11px] text-[#84a98c] font-semibold flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-full bg-[#10b981] animate-pulse" />
+                        Auto-Deduplication Enabled
+                    </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    {SUPPORTED_JOB_SOURCES.map((source) => (
+                        <a
+                            key={source.id}
+                            href={source.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group p-3 rounded-lg border border-[#f1f4f8] bg-[#fafbfc] hover:bg-white hover:border-[#84a98c] hover:shadow-sm transition-all"
+                        >
+                            <div className="flex items-center justify-between">
+                                <span className="font-bold text-xs text-[#1f2d3d] group-hover:text-[#354f52] transition-colors">
+                                    {source.name}
+                                </span>
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#354f52]/10 text-[#354f52]">
+                                    {source.badge}
+                                </span>
+                            </div>
+                            <p className="text-[10px] text-[#6e84a3] line-clamp-2 mt-1 leading-snug">
+                                {source.description}
+                            </p>
+                            <div className="mt-2 flex items-center justify-between text-[10px] pt-1.5 border-t border-[#eaedf3]/60">
+                                <span className="text-emerald-600 font-semibold flex items-center gap-0.5">
+                                    <Check className="h-2.5 w-2.5" /> Live Scrape
+                                </span>
+                                <ExternalLink className="h-2.5 w-2.5 text-[#95aac9] group-hover:text-[#354f52]" />
+                            </div>
+                        </a>
+                    ))}
                 </div>
             </div>
 
